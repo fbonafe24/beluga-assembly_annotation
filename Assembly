@@ -1,0 +1,43 @@
+#!/bin/bash
+
+# -----------------------------------------------
+# Step 1: Download PacBio datasets from NCBI SRA
+# -----------------------------------------------
+# Download data in FASTQ format using fasterq-dump
+fasterq-dump SRR25646287 --split-spot -p
+fasterq-dump SRR25646288 --split-spot -p
+fasterq-dump SRR12673620 --split-spot -p
+
+# -----------------------------------------------
+# Step 2: Convert FASTQ to FASTA
+# -----------------------------------------------
+# Use bioawk to extract sequences from FASTQ
+bioawk -c fastx '{print ">"$name"\n"$seq}' SRR25646287.fastq > SRR25646287.fasta
+bioawk -c fastx '{print ">"$name"\n"$seq}' SRR25646288.fastq > SRR25646288.fasta
+bioawk -c fastx '{print ">"$name"\n"$seq}' SRR12673620.fastq > SRR12673620.fasta
+
+# -----------------------------------------------
+# Step 3: Assess read length distribution
+# -----------------------------------------------
+assembly-stats SRR25646287.fasta
+assembly-stats SRR25646288.fasta
+assembly-stats SRR12673620.fasta
+
+# -----------------------------------------------
+# Step 4: Concatenate all FASTA reads
+# -----------------------------------------------
+cat SRR12673620.fasta SRR25646287.fasta SRR25646288.fasta > beluga_all.fasta
+
+# -----------------------------------------------
+# Step 5: Assemble using Flye (unfiltered full dataset)
+# -----------------------------------------------
+# Run job script
+sbatch flye.sh
+
+# Monitor job status
+squeue -u $USER
+
+# View live log
+tail flye_29021601.out
+tail flye.log
+
