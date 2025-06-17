@@ -1,0 +1,17 @@
+# -----------------------------------------------
+# Job statistics for flye.sh
+# -----------------------------------------------
+# JobID
+seff 29021601
+
+# Job ID: 29021601
+# Cluster: graham
+# User/Group: fbonafe/fbonafe
+# State: COMPLETED (exit code 0)
+# Nodes: 1
+# Cores per node: 16
+# CPU Utilized: 31-05:35:51
+# CPU Efficiency: 94.35% of 33-02:28:32 core-walltime
+# Job Wall-clock time: 2-01:39:17
+# Memory Utilized: 318.99 GB
+# Memory Efficiency: 63.80% of 500.00 GB (500.00 GB/node)
