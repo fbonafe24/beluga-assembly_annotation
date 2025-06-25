@@ -41,3 +41,69 @@ squeue -u $USER
 tail flye_29021601.out
 tail flye.log
 
+# -----------------------------------------------
+# Step 6: Evaluation of Assembly
+# -----------------------------------------------
+
+quast assembly.fasta -o Quast/
+
+busco -i assembly.fasta -m genome -l artiodactyla_odb12 -o busco_beluga -c 8
+
+# -----------------------------------------------
+# Step 7: Removal of haplotigs
+# -----------------------------------------------
+
+minimap2 -x map-pb -t 16 assembly.fasta beluga_all.fastq.gz | gzip -c > beluga_all.paf.gz
+
+pbcstat beluga_all.paf.gz
+
+calcuts PB.stat > cutoffs 2> calcuts.log
+
+split_fa assembly.fasta > assembly.split
+
+minimap2 -xasm5 -DP -t 16 assembly.split assembly.split | gzip -c > assembly.split.self.paf.gz
+
+purge_dups -2 -T cutoffs -c PB.base.cov assembly.split.self.paf.gz > dups.bed 2> purge_dups.log
+
+get_seqs -e dups.bed assembly.fasta
+
+# -----------------------------------------------
+# Step 8: Re-evaluation of new assembly
+# -----------------------------------------------
+
+busco -i purged.fa -m genome -l artiodactyla_odb12 -o busco_beluga -c 8
+
+# -----------------------------------------------
+# Step 9: Blobtoolkit
+# -----------------------------------------------
+
+blobtools create \
+  --fasta assembly.fa \
+  --taxid 9749
+  --taxdump taxdump
+  --purged_blobdir_dataset
+
+minimap2 -t 16 -x map-pb -a ../purged.fa ../../data/beluga_all.fasta.gz | samtools sort -@ 8 -o longreads.bam
+samtools index -c longreads.bam
+
+diamond blastx \
+  --query purged.fa \
+  --db uniprot/reference_proteomes.dmnd \
+  --outfmt 6 qseqid staxids bitscore qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore \
+  --sensitive \
+  --max-target-seqs 1 \
+  --evalue 1e-25 \
+  --threads 16 \
+  > purged.diamond.blastx.out
+
+
+
+# -----------------------------------------------
+# Step 10: Softmasking genome
+# -----------------------------------------------
+
+
+
+# -----------------------------------------------
+# Step 11: Gene annotation
+# -----------------------------------------------
