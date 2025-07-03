@@ -84,15 +84,16 @@ samtools index -c longreads.bam
 
 blobtools add --cov longreads.bam purged_blobdir_dataset
 
-diamond blastx \
+./diamond blastx \
   --query purged.fa \
-  --db uniprot/reference_proteomes.dmnd \
-  --outfmt 6 qseqid staxids bitscore qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore \
+  --db reference_proteomes.dmnd \
+  --outfmt 6 qseqid staxids bitscore sseqid pident length mismatch gapopen qstart qend sstart send evalue \
   --sensitive \
   --max-target-seqs 1 \
   --evalue 1e-25 \
-  --threads 16 \
-  > purged.diamond.blastx.out
+  --threads 10 \
+  --log \
+  --out purged.diamond.blastx.out
 
 
 # -----------------------------------------------
@@ -100,12 +101,17 @@ diamond blastx \
 # -----------------------------------------------
 
 RepeatMasker -species metazoa -s -parallel 10 -xsmall -alignments assembly.fasta
+RepeatMasker -species metazoa -s -parallel 10 -xsmall -alignments purged.fa
 
 BuildDatabase -name beluga_assembly assembly.fasta
+BuildDatabase -name beluga_purged purged.fa
 
 RepeatModeler -database beluga_assembly -pa 10 -LTRStruct -ninja_dir /hdd1/jlabarcena/frances/bin/NINJA-0.95-cluster_only/NINJA
+RepeatModeler -database beluga_purged -pa 10 -LTRStruct -ninja_dir /hdd1/jlabarcena/frances/bin/NINJA-0.95-cluster_only/NINJA
 
 RepeatMasker -lib beluga_assembly-families.fa -s -parallel 16 -xsmall -alignments assembly.fasta.masked
+RepeatMasker -lib beluga_purged-families.fa -s -parallel 16 -xsmall -alignments purged.fa.masked
+
 
 # -----------------------------------------------
 # Step 11: Gene annotation
@@ -125,18 +131,27 @@ cat liver_2.fastq brain_2.fastq > combined_2.fastq
 
 
 hisat2-build assembly.fasta.masked.masked assembly
+hisat2-build purged.fa.masked.masked purged
 
 hisat2 -x assembly -p 16 -1 /hdd1/jlabarcena/frances/PacBio_Flye/Annotation/RNASeq_data/combined_1.fastq.gz \
 -2 /hdd1/jlabarcena/frances/PacBio_Flye/Annotation/RNASeq_data/combined_2.fastq.gz | samtools sort -@ 16 -O BAM -o assembly.bam
 
-singularity exec /hdd1/jlabarcena/culicoides/Culicoides4_PacBio/braker/braker3.sif braker.pl 
---species=beluga --useexisting \
---bam=assembly.bam \
---genome=RepeatMasker/assembly.fasta.masked.masked \
---prot_seq=OrthoDB/odb12_mammalia_aa.fasta \
---workingdir=braker_out_beluga \
---softmasking \
---threads=30
+hisat2 -x purged -p 16 -1 /hdd1/jlabarcena/frances/PacBio_Flye/Annotation/RNASeq_data/combined_1.fastq.gz \
+-2 /hdd1/jlabarcena/frances/PacBio_Flye/Annotation/RNASeq_data/combined_2.fastq.gz | samtools sort -@ 16 -O BAM -o purged.bam
+
+singularity exec \
+  --bind ~/frances/PacBio_Flye/Annotation:/mnt \
+  /hdd1/jlabarcena/culicoides/Culicoides4_PacBio/braker/braker3.sif \
+  braker.pl \
+    --species=beluga \
+    --bam=/mnt/assembly.bam \
+    --genome=/mnt/RepeatMasker/assembly.fasta.masked.masked \
+    --prot_seq=/mnt/OrthoDB/Vertebrata.fa \
+    --workingdir=/mnt/braker_out_beluga \
+    --threads=20 \
+    --softmasking
+
+
 
 
 
