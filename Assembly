@@ -151,7 +151,40 @@ singularity exec \
     --threads=20 \
     --softmasking
 
+# -----------------------------------------------
+# Step 11: Finding PCNA gene
+# -----------------------------------------------
+
+makeblastdb -in braker_out_beluga/braker.aa -dbtype prot -out beluga_proteins_db
+
+blastp -query bowhead_pcna_protein.fasta \
+       -db db/beluga_proteins_db \
+       -out pcna_beluga_blastp.out \
+       -evalue 1e-10 \
+       -outfmt 6 \
+       -max_target_seqs 5 \
+       -num_threads 16 \
+       > blastp.stdout.log 2> blastp.stderr.log
+
+grep "g2928" ../braker_out_beluga/braker.gtf
+grep "g16695" ../braker_out_beluga/braker.gtf
+grep -E '(^|[^0-9])g1497(\.t1)?([^0-9]|$)' ../braker_out_beluga/braker.gtf
+
+grep -A5 "g2928.t1" ../braker_out_beluga/braker.aa
+grep -A5 "g16695.t1" ../braker_out_beluga/braker.aa
+grep -A5 "g1497.t1" ../braker_out_beluga/braker.aa
 
 
+# -----------------------------------------------
+# Step 11: Finding PCNA pseudogenes
+# -----------------------------------------------
 
+makeblastdb -in ../../RepeatMasker/assembly.fasta.masked.masked -dbtype nucl -out db/beluga_genome_db
 
+tblastn -query ../bowhead_pcna_protein.fasta \
+        -db db/beluga_genome_db \
+        -evalue 1e-5 \
+        -out pcna_pseudogene_tblastn.out \
+        -outfmt 6 \
+        -num_threads 16 \
+        > tblastn.stdout.log 2> tblastn.stderr.log
