@@ -1,0 +1,2 @@
+NanoPlot --fastq barcode17.fastq -o nanoplot17_output
+NanoPlot --fastq barcode18.fastq -o nanoplot18_output
