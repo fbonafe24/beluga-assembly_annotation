@@ -152,7 +152,7 @@ singularity exec \
     --softmasking
 
 # -----------------------------------------------
-# Step 11: Finding PCNA gene
+# Step 11: Finding PCNA genes
 # -----------------------------------------------
 
 makeblastdb -in braker_out_beluga/braker.aa -dbtype prot -out beluga_proteins_db
@@ -175,6 +175,13 @@ grep -A5 "g16695.t1" ../braker_out_beluga/braker.aa
 grep -A5 "g1497.t1" ../braker_out_beluga/braker.aa
 
 
+featureCounts -T 16 -p \
+  -a ../braker_out_beluga/braker.gtf \
+  -o pcna_counts.txt \
+  ../assembly.bam
+
+stringtie ../assembly.bam -p 16 -G ../braker_out_beluga/braker.gtf -o stringtie_assembled.gtf
+
 # -----------------------------------------------
 # Step 11: Finding PCNA pseudogenes
 # -----------------------------------------------
@@ -188,3 +195,6 @@ tblastn -query ../bowhead_pcna_protein.fasta \
         -outfmt 6 \
         -num_threads 16 \
         > tblastn.stdout.log 2> tblastn.stderr.log
+
+
+
