@@ -147,12 +147,24 @@ singularity exec \
     --bam=/mnt/assembly.bam \
     --genome=/mnt/RepeatMasker/assembly.fasta.masked.masked \
     --prot_seq=/mnt/OrthoDB/Vertebrata.fa \
-    --workingdir=/mnt/braker_out_beluga \
+    --workingdir=/mnt/braker_out_beluga/original_assembly \
     --threads=20 \
     --softmasking
 
+singularity exec \
+  --bind ~/frances/PacBio_Flye/Annotation:/mnt \
+  /hdd1/jlabarcena/culicoides/Culicoides4_PacBio/braker/braker3.sif \
+  braker.pl \
+    --species=beluga --useexisting \
+    --bam=/mnt/purged.bam \
+    --genome=/mnt/RepeatMasker/purged.fa.masked.masked \
+    --prot_seq=/mnt/OrthoDB/Vertebrata.fa \
+    --workingdir=/mnt/braker_out_beluga/purged_assembly \
+    --threads=16 \
+    --softmasking
+
 # -----------------------------------------------
-# Step 11: Finding PCNA genes
+# Step 11: Finding PCNA genes (original assembly)
 # -----------------------------------------------
 
 makeblastdb -in braker_out_beluga/braker.aa -dbtype prot -out beluga_proteins_db
@@ -180,7 +192,39 @@ featureCounts -T 16 -p \
   -o pcna_counts.txt \
   ../assembly.bam
 
+grep "g2928" pcna_counts.txt
+grep "g16695" pcna_counts.txt
+grep -E '(^|[^0-9])g1497(\.t1)?([^0-9]|$)' pcna_counts.txt
+
 stringtie ../assembly.bam -p 16 -G ../braker_out_beluga/braker.gtf -o stringtie_assembled.gtf
+
+grep "g2928" stringtie_assembled.gtf
+grep "g16695" stringtie_assembled.gtf
+grep -E '(^|[^0-9])g1497(\.t1)?([^0-9]|$)' stringtie_assembled.gtf
+
+
+echo -e "contig_914\t18425339\t18426338\tg16695_promoter\t0\t-" > g16695_promoter.bed
+
+
+wget https://jaspar.elixir.no/download/data/2024/CORE/JASPAR2024_CORE_vertebrates_non-redundant_pfms_meme.txt
+
+echo -e "contig_914\t18425339\t18426338\tg16695_promoter\t0\t-" > g16695_promoter.bed
+bedtools getfasta -fi ../../RepeatMasker/assembly.fasta.masked.masked -bed g16695_promoter.bed -s -name -fo g16695_promoter.fasta
+fimo --oc fimo_out motifs.meme g16695_promoter.fasta
+
+grep "^MOTIF" motifs.meme | awk '{print $2"\t"$3}' > motif_map.tsv
+join -t $'\t' -1 1 -2 1 <(sort ../../motif_map.tsv) <(sort fimo.txt) > fimo_annotated.txt
+
+echo -e "Pattern_ID\tMotif_Name\tSequence\tStart\tEnd\tStrand\tScore\tP-value\tQ-value\tMatched_Sequence" > header.txt
+cat header.txt fimo_annotated.txt > fimo_final.txt
+awk 'NR==1 || ($1 !~ /^#/ && $9 <= 0.05)' fimo_final.txt > fimo_05.txt
+
+echo -e "contig_1383\t546719\t547718\tg2928_promoter\t0\t-" > g2928/g2928_promoter.bed
+bedtools getfasta -fi ../../RepeatMasker/assembly.fasta.masked.masked -bed g2928_promoter.bed -s -name -fo g2928_promoter.fasta
+fimo --oc fimo_out ../motifs.meme g2928_promoter.fasta
+awk 'NR==1 || ($1 !~ /^#/ && $9 <= 0.05)' fimo_final.txt > fimo_05.txt
+
+
 
 # -----------------------------------------------
 # Step 11: Finding PCNA pseudogenes
