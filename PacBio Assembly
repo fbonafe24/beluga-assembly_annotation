@@ -47,7 +47,7 @@ tail flye.log
 
 quast assembly.fasta -o Quast/
 
-busco -i assembly.fasta -m genome -l artiodactyla_odb12 -o busco_beluga -c 8
+busco -i flye_output/assembly.fasta -m genome -l artiodactyla_odb12 -o BUSCO -c 8
 
 # -----------------------------------------------
 # Step 7: Removal of haplotigs
@@ -224,10 +224,19 @@ bedtools getfasta -fi ../../RepeatMasker/assembly.fasta.masked.masked -bed g2928
 fimo --oc fimo_out ../motifs.meme g2928_promoter.fasta
 awk 'NR==1 || ($1 !~ /^#/ && $9 <= 0.05)' fimo_final.txt > fimo_05.txt
 
+echo -e "contig_1154\t11321638\t11322637\tg1497_promoter\t0\t-" > g1497_promoter.bed
+bedtools getfasta -fi ../../../RepeatMasker/assembly.fasta.masked.masked -bed g1497_promoter.bed -s -name -fo g1497_promoter.fasta
+fimo --oc fimo_out ../motifs.meme g1497_promoter.fasta
+awk 'NR==1 || ($1 !~ /^#/ && $9 <= 0.05)' fimo_final.txt > fimo_05.txt
 
 
 # -----------------------------------------------
-# Step 11: Finding PCNA pseudogenes
+# Step 11: Finding PCNA genes (purged assembly)
+# -----------------------------------------------
+
+
+# -----------------------------------------------
+# Step : Finding PCNA pseudogenes
 # -----------------------------------------------
 
 makeblastdb -in ../../RepeatMasker/assembly.fasta.masked.masked -dbtype nucl -out db/beluga_genome_db
