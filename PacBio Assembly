@@ -178,7 +178,7 @@ blastp -query bowhead_pcna_protein.fasta \
        -num_threads 16 \
        > blastp.stdout.log 2> blastp.stderr.log
 
-grep "g2928" ../braker_out_beluga/braker.gtf
+grep "g2928" ../braker_out_beluga/braker.gtf > g2928
 grep "g16695" ../braker_out_beluga/braker.gtf
 grep -E '(^|[^0-9])g1497(\.t1)?([^0-9]|$)' ../braker_out_beluga/braker.gtf
 
@@ -234,9 +234,35 @@ awk 'NR==1 || ($1 !~ /^#/ && $9 <= 0.05)' fimo_final.txt > fimo_05.txt
 # Step 11: Finding PCNA genes (purged assembly)
 # -----------------------------------------------
 
+makeblastdb -in ../../../braker_out_beluga/purged_assembly/braker.aa -dbtype prot -out db/beluga_proteins_db
+
+blastp -query ../bowhead_pcna_protein.fasta \
+       -db db/beluga_proteins_db \
+       -out pcna_beluga_blastp.out \
+       -evalue 1e-10 \
+       -outfmt 6 \
+       -max_target_seqs 5 \
+       -num_threads 16 \
+       > blastp.stdout.log 2> blastp.stderr.log
+
+grep "g2922" ../../../braker_out_beluga/purged_assembly/braker.gtf
+grep "g16715" ../../../braker_out_beluga/purged_assembly/braker.gtf
+grep -E '(^|[^0-9])g1497(\.t1)?([^0-9]|$)' ../../../braker_out_beluga/purged_assembly/braker.gtf
+
+featureCounts -T 16 -p \
+  -a ../../braker_out_beluga/purged_assembly/braker.gtf \
+  -o pcna_counts.txt \
+  ../../purged.bam
+
+grep "g2922" pcna_counts.txt
+grep "g16715" pcna_counts.txt
+grep -E '(^|[^0-9])g1497(\.t1)?([^0-9]|$)' pcna_counts.txt
+
+stringtie ../../purged.bam -p 16 -G ../../braker_out_beluga/purged_assembly/braker.gtf -o stringtie_assembled.gtf
+
 
 # -----------------------------------------------
-# Step : Finding PCNA pseudogenes
+# Step : Finding PCNA pseudogenes (original assembly)
 # -----------------------------------------------
 
 makeblastdb -in ../../RepeatMasker/assembly.fasta.masked.masked -dbtype nucl -out db/beluga_genome_db
@@ -249,5 +275,30 @@ tblastn -query ../bowhead_pcna_protein.fasta \
         -num_threads 16 \
         > tblastn.stdout.log 2> tblastn.stderr.log
 
+samtools faidx ../../../RepeatMasker/assembly.fasta.masked.masked contig_1778:3962000-3965000 > contig_1778_pcna_region.fa
+
+exonerate \
+  --model protein2genome \
+  --softmasktarget yes \
+  --showtargetgff yes \
+  --showalignment no \
+  --showvulgar no \
+  -q ../bowhead_pcna_protein.fasta \
+  -t contig_1778_pcna_region.fa \
+  > pcna_contig1778_exonerate.out
+
+# -----------------------------------------------
+# Step : Finding PCNA pseudogenes (purged assembly)
+# -----------------------------------------------
+
+makeblastdb -in ../../../RepeatMasker/purged.fa.masked.masked -dbtype nucl -out db/beluga_genome_db
+
+tblastn -query ../bowhead_pcna_protein.fasta \
+        -db db/beluga_genome_db \
+        -evalue 1e-5 \
+        -out pcna_pseudogene_tblastn.out \
+        -outfmt 6 \
+        -num_threads 16 \
+        > tblastn.stdout.log 2> tblastn.stderr.log
 
 
