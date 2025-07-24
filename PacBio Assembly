@@ -77,12 +77,13 @@ busco -i purged.fa -m genome -l artiodactyla_odb12 -o busco_beluga -c 8
 # Step 9: Blobtoolkit
 # -----------------------------------------------
 
+#For purged.fa
 blobtools create --fasta ../purged.fa --taxid 9749 --taxdump taxdump purged_blobdir_dataset
 
-minimap2 -t 16 -x map-pb -a ../purged.fa ../../data/beluga_all.fasta.gz | samtools sort -@ 8 -o longreads.bam
-samtools index -c longreads.bam
+minimap2 -t 16 -x map-pb -a ../purged.fa ../../data/beluga_all.fasta.gz | samtools sort -@ 8 -o purged_longreads.bam
+samtools index -c purged_longreads.bam
 
-blobtools add --cov longreads.bam purged_blobdir_dataset
+blobtools add --cov purged_longreads.bam purged_blobdir_dataset
 
 ./diamond blastx \
   --query purged.fa \
@@ -95,6 +96,19 @@ blobtools add --cov longreads.bam purged_blobdir_dataset
   --log \
   --out purged.diamond.blastx.out
 
+blobtools add --busco ../BUSCO/BUSCO_Purged/run_artiodactyla_odb12/full_table.tsv purged_blobdir_dataset
+
+blobtools view --plot --view snail purged_blobdir_dataset
+
+#For assembly.fasta
+blobtools create --fasta ../assembly.fasta --taxid 9749 --taxdump taxdump assembly_blobdir_dataset
+
+minimap2 -t 16 -x map-pb -a ../assembly.fasta ../../data/PacBio_data/beluga_all.fasta.gz | samtools sort -@ 8 -o assembly_longreads.bam
+samtools index -c assembly_longreads.bam
+
+blobtools add --cov assembly_longreads.bam assembly_blobdir_dataset
+
+blobtools add --busco ../BUSCO/busco_beluga/run_artiodactyla_odb12/full_table.tsv assembly_blobdir_dataset
 
 # -----------------------------------------------
 # Step 10: Softmasking genome
