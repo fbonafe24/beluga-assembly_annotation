@@ -1,2 +1,27 @@
 NanoPlot --fastq barcode17.fastq -o nanoplot17_output
 NanoPlot --fastq barcode18.fastq -o nanoplot18_output
+
+bioawk -c fastx '{print ">"$name"\n"$seq}' barcode17.fastq > barcode17.fasta
+bioawk -c fastx '{print ">"$name"\n"$seq}' barcode18.fastq > barcode18.fasta
+
+seqkit seq -m 1000 barcode17.fasta > barcode17_1kb.fasta
+seqkit seq -m 1000 barcode18.fasta > barcode18_1kb.fasta
+
+seqkit stat barcode17_1kb.fasta
+seqkit stat barcode18_1kb.fasta
+
+quast assembly.fasta -o Quast/
+
+porechop \
+  -i barcode17.fastq \
+  -o barcode17_trimmed.fasta \
+  --format fasta \
+  --threads 16
+
+porechop \
+  -i barcode18.fastq \
+  -o barcode18_trimmed.fasta \
+  --format fasta \
+  --threads 16
+
+
