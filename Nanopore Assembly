@@ -1,17 +1,36 @@
+# Quality Assessment
 NanoPlot --fastq barcode17.fastq -o nanoplot17_output
 NanoPlot --fastq barcode18.fastq -o nanoplot18_output
 
+# Convert FASTQ t0 FASTA
 bioawk -c fastx '{print ">"$name"\n"$seq}' barcode17.fastq > barcode17.fasta
 bioawk -c fastx '{print ">"$name"\n"$seq}' barcode18.fastq > barcode18.fasta
 
+# Assemble with flye
+flye \
+ --nano-raw barcode17.fasta \
+ --genome-size 2.4g \
+ --out-dir flye_17 \
+ --threads 16
+
+flye \
+ --nano-raw barcode18.fasta \
+ --genome-size 2.4g \
+ --out-dir flye_18 \
+ --threads 16
+
+#Assembly Quality Statistics
+quast assembly.fasta -o Quast/
+
+# Filter by Read Lengths
 seqkit seq -m 1000 barcode17.fasta > barcode17_1kb.fasta
 seqkit seq -m 1000 barcode18.fasta > barcode18_1kb.fasta
 
+# Summary Statistics
 seqkit stat barcode17_1kb.fasta
 seqkit stat barcode18_1kb.fasta
 
-quast assembly.fasta -o Quast/
-
+#Adapter trimming
 porechop \
   -i barcode17.fastq \
   -o barcode17_trimmed.fasta \
@@ -23,5 +42,16 @@ porechop \
   -o barcode18_trimmed.fasta \
   --format fasta \
   --threads 16
+
+#Trimmed Read Statistics
+seqkit stat barcode18_trimmed.fasta
+seqkit stat barcode17_trimmed.fasta
+assembly-stats barcode18_trimmed.fasta
+assembly-stats barcode17_trimmed.fasta
+
+seqkit seq -m 1000 barcode18_trimmed.fasta > barcode18_trimmed_1kb.fasta
+
+seqkit stat barcode18_trimmed_1kb.fasta
+assembly-stats barcode18_trimmed_1kb.fasta
 
 
