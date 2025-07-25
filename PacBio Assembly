@@ -301,6 +301,9 @@ exonerate \
   -t contig_1778_pcna_region.fa \
   > pcna_contig1778_exonerate.out
 
+samtools view ../../../assembly.bam "contig_1778:3962000-3965000" | wc -l
+samtools view ../../../assembly.bam "contig_1778:3963178-3963939" | wc -l
+
 # -----------------------------------------------
 # Step : Finding PCNA pseudogenes (purged assembly)
 # -----------------------------------------------
