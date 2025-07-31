@@ -143,7 +143,6 @@ cat SRR5282294_2.fastq SRR5282295_2.fastq SRR5282296_2.fastq SRR5282297_2.fastq 
 cat liver_1.fastq brain_1.fastq > combined_1.fastq
 cat liver_2.fastq brain_2.fastq > combined_2.fastq
 
-
 hisat2-build assembly.fasta.masked.masked assembly
 hisat2-build purged.fa.masked.masked purged
 
@@ -152,6 +151,8 @@ hisat2 -x assembly -p 16 -1 /hdd1/jlabarcena/frances/PacBio_Flye/Annotation/RNAS
 
 hisat2 -x purged -p 16 -1 /hdd1/jlabarcena/frances/PacBio_Flye/Annotation/RNASeq_data/combined_1.fastq.gz \
 -2 /hdd1/jlabarcena/frances/PacBio_Flye/Annotation/RNASeq_data/combined_2.fastq.gz | samtools sort -@ 16 -O BAM -o purged.bam
+
+wget https://bioinf.uni-greifswald.de/bioinf/partitioned_odb11/Vertebrata.fa.gz
 
 singularity exec \
   --bind ~/frances/PacBio_Flye/Annotation:/mnt \
@@ -216,9 +217,9 @@ grep "g2928" stringtie_assembled.gtf
 grep "g16695" stringtie_assembled.gtf
 grep -E '(^|[^0-9])g1497(\.t1)?([^0-9]|$)' stringtie_assembled.gtf
 
-
-echo -e "contig_914\t18425339\t18426338\tg16695_promoter\t0\t-" > g16695_promoter.bed
-
+# -----------------------------------------------
+# Step: Promoter region analysis (original assembly)
+# -----------------------------------------------
 
 wget https://jaspar.elixir.no/download/data/2024/CORE/JASPAR2024_CORE_vertebrates_non-redundant_pfms_meme.txt
 
@@ -245,7 +246,7 @@ awk 'NR==1 || ($1 !~ /^#/ && $9 <= 0.05)' fimo_final.txt > fimo_05.txt
 
 
 # -----------------------------------------------
-# Step 11: Finding PCNA genes (purged assembly)
+# Step: Finding PCNA genes (purged assembly)
 # -----------------------------------------------
 
 makeblastdb -in ../../../braker_out_beluga/purged_assembly/braker.aa -dbtype prot -out db/beluga_proteins_db
@@ -273,6 +274,14 @@ grep "g16715" pcna_counts.txt
 grep -E '(^|[^0-9])g1497(\.t1)?([^0-9]|$)' pcna_counts.txt
 
 stringtie ../../purged.bam -p 16 -G ../../braker_out_beluga/purged_assembly/braker.gtf -o stringtie_assembled.gtf
+
+grep "g2922" stringtie_assembled.gtf
+grep "g16715" stringtie_assembled.gtf
+grep -E '(^|[^0-9])g1497(\.t1)?([^0-9]|$)' stringtie_assembled.gtf
+
+# -----------------------------------------------
+# Step: Promoter region analysis (purged assembly)
+# -----------------------------------------------
 
 
 # -----------------------------------------------
