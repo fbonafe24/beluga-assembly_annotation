@@ -8,6 +8,7 @@ fasterq-dump SRR25646287 --split-spot -p
 fasterq-dump SRR25646288 --split-spot -p
 fasterq-dump SRR12673620 --split-spot -p
 
+
 # -----------------------------------------------
 # Step 2: Convert FASTQ to FASTA
 # -----------------------------------------------
@@ -16,17 +17,25 @@ bioawk -c fastx '{print ">"$name"\n"$seq}' SRR25646287.fastq > SRR25646287.fasta
 bioawk -c fastx '{print ">"$name"\n"$seq}' SRR25646288.fastq > SRR25646288.fasta
 bioawk -c fastx '{print ">"$name"\n"$seq}' SRR12673620.fastq > SRR12673620.fasta
 
+
 # -----------------------------------------------
 # Step 3: Assess read length distribution
 # -----------------------------------------------
+# Inspect basic stats (N50, total bp, longest read) of each read set to quickly inspect read length profiles.
 assembly-stats SRR25646287.fasta
 assembly-stats SRR25646288.fasta
 assembly-stats SRR12673620.fasta
 
+
 # -----------------------------------------------
-# Step 4: Concatenate all FASTA reads
+# Step 4: Concatenate all reads
 # -----------------------------------------------
+# Concatenate all FASTA files
 cat SRR12673620.fasta SRR25646287.fasta SRR25646288.fasta > beluga_all.fasta
+
+# Concatenate all FASTQ files and compress
+cat SRR12673620.fastq SRR25646287.fastq SRR25646288.fastq | gzip -c > beluga_all.fastq.gz
+
 
 # -----------------------------------------------
 # Step 5: Assemble using Flye (unfiltered full dataset)
@@ -37,54 +46,96 @@ sbatch flye.sh
 # Monitor job status
 squeue -u $USER
 
-# View live log
+# View progress logs:
 tail flye_29021601.out
 tail flye.log
+
 
 # -----------------------------------------------
 # Step 6: Evaluation of Assembly
 # -----------------------------------------------
-
+# QUAST summarizes contigs/scaffolds (N50, total length, # contigs, etc.)
 quast assembly.fasta -o Quast/
 
+# BUSCO estimates gene content completeness using a lineage dataset (Artiodactyla).
+# -m genome: treat input as a genome assembly
+# -l artiodactyla_odb12: lineage dataset
+# -c 8: use 8 threads
 busco -i flye_output/assembly.fasta -m genome -l artiodactyla_odb12 -o BUSCO -c 8
 
-# -----------------------------------------------
-# Step 7: Removal of haplotigs
-# -----------------------------------------------
 
+# -----------------------------------------------
+# Step 7: Removal of haplotigs (purge_dups pipeline)
+# -----------------------------------------------
+# 1) Map long reads to the assembly; PAF output
+# -x map-pb: preset for PacBio reads; -t 16: threads
 minimap2 -x map-pb -t 16 assembly.fasta beluga_all.fastq.gz | gzip -c > beluga_all.paf.gz
 
+# 2) Compute per-base coverage stats from the PAF to infer coverage cutoffs.
 pbcstat beluga_all.paf.gz
 
+# 3) Calculate cutoffs
 calcuts PB.stat > cutoffs 2> calcuts.log
 
+# 4) Split assembly
 split_fa assembly.fasta > assembly.split
 
+# 5) Self-align to the assembly
 minimap2 -xasm5 -DP -t 16 assembly.split assembly.split | gzip -c > assembly.split.self.paf.gz
 
+# 6) Run purge_dups with coverage cutoffs (-T) and base coverage (-c) to mark duplicates.
 purge_dups -2 -T cutoffs -c PB.base.cov assembly.split.self.paf.gz > dups.bed 2> purge_dups.log
 
+# 7) Extract sequences; generates purged.fa and hap.fa.
 get_seqs -e dups.bed assembly.fasta
+
 
 # -----------------------------------------------
 # Step 8: Re-evaluation of new assembly
 # -----------------------------------------------
+# Re-run QUAST on the purged assembly for assembly statistics
+quast purged.fa -o Quast/
 
+# Re-run BUSCO on the purged assembly to see if duplication decreased while completeness stayed high
 busco -i purged.fa -m genome -l artiodactyla_odb12 -o busco_beluga -c 8
+
 
 # -----------------------------------------------
 # Step 9: Blobtoolkit
 # -----------------------------------------------
+# -------- Original Assembly --------
+# Initialize a BlobToolKit dataset for the original assembly
+blobtools create --fasta ../assembly.fasta --taxid 9749 --taxdump taxdump assembly_blobdir_dataset
 
-#For purged.fa
+# Map long reads and prepare coverage BAM for the original assembly
+minimap2 -t 16 -x map-pb -a ../assembly.fasta ../../data/PacBio_data/beluga_all.fasta.gz | samtools sort -@ 8 -o assembly_longreads.bam
+samtools index -c assembly_longreads.bam
+
+# Add read coverage to the dataset
+blobtools add --cov assembly_longreads.bam assembly_blobdir_dataset
+
+# Add BUSCO table from the original assembly run
+blobtools add --busco ../BUSCO/busco_beluga/run_artiodactyla_odb12/full_table.tsv assembly_blobdir_dataset
+
+
+# -------- purged.fa --------
+# Create a BlobToolKit dataset directory for purged.fa with given taxid and NCBI taxdump
 blobtools create --fasta ../purged.fa --taxid 9749 --taxdump taxdump purged_blobdir_dataset
 
+# Map long reads to the purged assembly to get coverage per contig; sort to BAM and index
 minimap2 -t 16 -x map-pb -a ../purged.fa ../../data/beluga_all.fasta.gz | samtools sort -@ 8 -o purged_longreads.bam
 samtools index -c purged_longreads.bam
 
+# Add the coverage BAM to the BlobToolKit dataset
 blobtools add --cov purged_longreads.bam purged_blobdir_dataset
 
+# Add BUSCO gene table to BlobToolKit for\metadata
+blobtools add --busco ../BUSCO/BUSCO_Purged/run_artiodactyla_odb12/full_table.tsv purged_blobdir_dataset
+
+# Render a snail plot view for the purged dataset
+blobtools view --plot --view snail purged_blobdir_dataset
+
+# Annotate contigs against reference proteomes; produces tabular output for taxonomic assignment
 ./diamond blastx \
   --query purged.fa \
   --db reference_proteomes.dmnd \
@@ -96,33 +147,23 @@ blobtools add --cov purged_longreads.bam purged_blobdir_dataset
   --log \
   --out purged.diamond.blastx.out
 
-blobtools add --busco ../BUSCO/BUSCO_Purged/run_artiodactyla_odb12/full_table.tsv purged_blobdir_dataset
-
-blobtools view --plot --view snail purged_blobdir_dataset
-
-#For assembly.fasta
-blobtools create --fasta ../assembly.fasta --taxid 9749 --taxdump taxdump assembly_blobdir_dataset
-
-minimap2 -t 16 -x map-pb -a ../assembly.fasta ../../data/PacBio_data/beluga_all.fasta.gz | samtools sort -@ 8 -o assembly_longreads.bam
-samtools index -c assembly_longreads.bam
-
-blobtools add --cov assembly_longreads.bam assembly_blobdir_dataset
-
-blobtools add --busco ../BUSCO/busco_beluga/run_artiodactyla_odb12/full_table.tsv assembly_blobdir_dataset
-
 # -----------------------------------------------
 # Step 10: Softmasking genome
 # -----------------------------------------------
-
+# 1) Run RepeatMasker with a broad metazoa library
 RepeatMasker -species metazoa -s -parallel 10 -xsmall -alignments assembly.fasta
 RepeatMasker -species metazoa -s -parallel 10 -xsmall -alignments purged.fa
 
+# 2) Build RepeatModeler databases for de novo repeat discovery on each assembly
 BuildDatabase -name beluga_assembly assembly.fasta
 BuildDatabase -name beluga_purged purged.fa
 
+# 3) Run RepeatModeler to discover species-specific repeat families (plus LTRStruct step)
 RepeatModeler -database beluga_assembly -pa 10 -LTRStruct -ninja_dir /hdd1/jlabarcena/frances/bin/NINJA-0.95-cluster_only/NINJA
 RepeatModeler -database beluga_purged -pa 10 -LTRStruct -ninja_dir /hdd1/jlabarcena/frances/bin/NINJA-0.95-cluster_only/NINJA
 
+# 4) Re-run RepeatMasker using the custom de novo libraries to softmask with higher specificity
+#    -lib <families.fa> supplies the newly discovered repeats.
 RepeatMasker -lib beluga_assembly-families.fa -s -parallel 16 -xsmall -alignments assembly.fasta.masked
 RepeatMasker -lib beluga_purged-families.fa -s -parallel 16 -xsmall -alignments purged.fa.masked
 
@@ -130,30 +171,43 @@ RepeatMasker -lib beluga_purged-families.fa -s -parallel 16 -xsmall -alignments 
 # -----------------------------------------------
 # Step 11: Gene annotation
 # -----------------------------------------------
-
-#Getting RNASeq data
+# -------- Download & organize RNA-seq data --------
+# Fetch several SRA runs (liver and brain), split into read pairs, and merge by tissue
 for SRR in SRR5282288 SRR5282291 SRR5282292 SRR5282298; do   prefetch $SRR;   fasterq-dump $SRR --split-files --threads 4 -p; done
+
+# Concatenate R1 and R2 across liver runs.
 cat SRR5282288_1.fastq SRR5282291_1.fastq SRR5282292_1.fastq SRR5282298_1.fastq > liver_1.fastq
 cat SRR5282288_2.fastq SRR5282291_2.fastq SRR5282292_2.fastq SRR5282298_2.fastq > liver_2.fastq
 
 for SRR in SRR5282294 SRR5282295 SRR5282296 SRR5282297; do   prefetch $SRR;   fasterq-dump $SRR --split-files --threads 4 -p; done
+# Concatenate R1 and R2 across brain runs
 cat SRR5282294_1.fastq SRR5282295_1.fastq SRR5282296_1.fastq SRR5282297_1.fastq > brain_1.fastq
 cat SRR5282294_2.fastq SRR5282295_2.fastq SRR5282296_2.fastq SRR5282297_2.fastq > brain_2.fastq
 
+# Merge tissues to create combined read sets
 cat liver_1.fastq brain_1.fastq > combined_1.fastq
 cat liver_2.fastq brain_2.fastq > combined_2.fastq
 
+# -------- Build HISAT2 indices on masked assemblies --------
+# Build genome indices from the softmasked assemblies
 hisat2-build assembly.fasta.masked.masked assembly
 hisat2-build purged.fa.masked.masked purged
 
+# -------- Align RNA-seq --------
+# Align combined RNA-Seq reads to the original assembly index; pipe to samtools sort for BAM
 hisat2 -x assembly -p 16 -1 /hdd1/jlabarcena/frances/PacBio_Flye/Annotation/RNASeq_data/combined_1.fastq.gz \
 -2 /hdd1/jlabarcena/frances/PacBio_Flye/Annotation/RNASeq_data/combined_2.fastq.gz | samtools sort -@ 16 -O BAM -o assembly.bam
 
+# Align combined RNA-Seq reads to the purged assembly index; produce sorted BAM.
 hisat2 -x purged -p 16 -1 /hdd1/jlabarcena/frances/PacBio_Flye/Annotation/RNASeq_data/combined_1.fastq.gz \
 -2 /hdd1/jlabarcena/frances/PacBio_Flye/Annotation/RNASeq_data/combined_2.fastq.gz | samtools sort -@ 16 -O BAM -o purged.bam
 
+# -------- Download protein evidence for BRAKER --------
+# Vertebrata protein set is used as protein homology evidence
 wget https://bioinf.uni-greifswald.de/bioinf/partitioned_odb11/Vertebrata.fa.gz
 
+# -------- Run BRAKER3 (original assembly) --------
+# Run BRAKER with RNA-seq BAM and protein homology; softmasking indicates masked assembly input
 singularity exec \
   --bind ~/frances/PacBio_Flye/Annotation:/mnt \
   /hdd1/jlabarcena/culicoides/Culicoides4_PacBio/braker/braker3.sif \
@@ -166,6 +220,8 @@ singularity exec \
     --threads=20 \
     --softmasking
 
+# -------- Run BRAKER3 (purged assembly, reuse parameters) --------
+# --useexisting allows BRAKER to reuse intermediate data for the same species
 singularity exec \
   --bind ~/frances/PacBio_Flye/Annotation:/mnt \
   /hdd1/jlabarcena/culicoides/Culicoides4_PacBio/braker/braker3.sif \
@@ -178,12 +234,15 @@ singularity exec \
     --threads=16 \
     --softmasking
 
-# -----------------------------------------------
-# Step 11: Finding PCNA genes (original assembly)
-# -----------------------------------------------
 
+# -----------------------------------------------
+# Step 12: Finding PCNA genes (original assembly)
+# -----------------------------------------------
+# Build a BLAST protein database from BRAKER amino acid prediction
 makeblastdb -in braker_out_beluga/braker.aa -dbtype prot -out beluga_proteins_db
 
+# BLAST the bowhead PCNA protein query against the beluga predicted proteins
+# -outfmt 6: tabular; -max_target_seqs 5: top 5 hits
 blastp -query bowhead_pcna_protein.fasta \
        -db db/beluga_proteins_db \
        -out pcna_beluga_blastp.out \
@@ -193,52 +252,68 @@ blastp -query bowhead_pcna_protein.fasta \
        -num_threads 16 \
        > blastp.stdout.log 2> blastp.stderr.log
 
+# Extract gene model coordinates for candidate PCNA hits from GTF
 grep "g2928" ../braker_out_beluga/braker.gtf > g2928
 grep "g16695" ../braker_out_beluga/braker.gtf
 grep -E '(^|[^0-9])g1497(\.t1)?([^0-9]|$)' ../braker_out_beluga/braker.gtf
 
+# Check protein sequences
 grep -A5 "g2928.t1" ../braker_out_beluga/braker.aa
 grep -A5 "g16695.t1" ../braker_out_beluga/braker.aa
 grep -A5 "g1497.t1" ../braker_out_beluga/braker.aa
 
-
+# Quantify expression using featureCounts on the RNA-seq-aligned BAM
+# -p: paired-end; -T 16: threads; -a: annotation GTF; -o: output table.
 featureCounts -T 16 -p \
   -a ../braker_out_beluga/braker.gtf \
   -o pcna_counts.txt \
   ../assembly.bam
 
+# Extract counts for the genes of interest from the featureCounts table
 grep "g2928" pcna_counts.txt
 grep "g16695" pcna_counts.txt
 grep -E '(^|[^0-9])g1497(\.t1)?([^0-9]|$)' pcna_counts.txt
 
+# Assemble transcripts with StringTie guided by the BRAKER GTF; produces a new GTF
 stringtie ../assembly.bam -p 16 -G ../braker_out_beluga/braker.gtf -o stringtie_assembled.gtf
 
+# Check whether StringTie produced transcripts for the target genes
 grep "g2928" stringtie_assembled.gtf
 grep "g16695" stringtie_assembled.gtf
 grep -E '(^|[^0-9])g1497(\.t1)?([^0-9]|$)' stringtie_assembled.gtf
 
-# -----------------------------------------------
-# Step: Promoter region analysis (original assembly)
-# -----------------------------------------------
 
+# -----------------------------------------------
+# Step 13: Promoter region analysis (original assembly)
+# -----------------------------------------------
+# Download MEME-formatted vertebrate motif collection from JASPAR
 wget https://jaspar.elixir.no/download/data/2024/CORE/JASPAR2024_CORE_vertebrates_non-redundant_pfms_meme.txt
 
+# Define a promoter interval for g16695 and extract sequence
 echo -e "contig_914\t18425339\t18426338\tg16695_promoter\t0\t-" > g16695_promoter.bed
-bedtools getfasta -fi ../../RepeatMasker/assembly.fasta.masked.masked -bed g16695_promoter.bed -s -name -fo g16695_promoter.fasta
+
+# bedtools getfasta fetches strand-specific sequence for the interval
+bedtools getfasta -fi ../../../RepeatMasker/assembly.fasta.masked.masked -bed g16695_promoter.bed -s -name -fo g16695_promoter.fasta
+
+# Scan the promoter with FIMO for motif occurrences using the MEME motif file
 fimo --oc fimo_out motifs.meme g16695_promoter.fasta
 
+# Map MOTIF IDs and annotate FIMO results
 grep "^MOTIF" motifs.meme | awk '{print $2"\t"$3}' > motif_map.tsv
 join -t $'\t' -1 1 -2 1 <(sort ../../motif_map.tsv) <(sort fimo.txt) > fimo_annotated.txt
 
+# Add a header and filter by q-value/p-value threshold (<= 0.05)
 echo -e "Pattern_ID\tMotif_Name\tSequence\tStart\tEnd\tStrand\tScore\tP-value\tQ-value\tMatched_Sequence" > header.txt
 cat header.txt fimo_annotated.txt > fimo_final.txt
 awk 'NR==1 || ($1 !~ /^#/ && $9 <= 0.05)' fimo_final.txt > fimo_05.txt
 
+# Repeat for g2928 promoter: define interval, extract, scan, and filter
 echo -e "contig_1383\t546719\t547718\tg2928_promoter\t0\t-" > g2928/g2928_promoter.bed
-bedtools getfasta -fi ../../RepeatMasker/assembly.fasta.masked.masked -bed g2928_promoter.bed -s -name -fo g2928_promoter.fasta
+bedtools getfasta -fi ../../../RepeatMasker/assembly.fasta.masked.masked -bed g2928_promoter.bed -s -name -fo g2928_promoter.fasta
 fimo --oc fimo_out ../motifs.meme g2928_promoter.fasta
 awk 'NR==1 || ($1 !~ /^#/ && $9 <= 0.05)' fimo_final.txt > fimo_05.txt
 
+# Repeat for g1497 promoter
 echo -e "contig_1154\t11321638\t11322637\tg1497_promoter\t0\t-" > g1497_promoter.bed
 bedtools getfasta -fi ../../../RepeatMasker/assembly.fasta.masked.masked -bed g1497_promoter.bed -s -name -fo g1497_promoter.fasta
 fimo --oc fimo_out ../motifs.meme g1497_promoter.fasta
@@ -246,11 +321,12 @@ awk 'NR==1 || ($1 !~ /^#/ && $9 <= 0.05)' fimo_final.txt > fimo_05.txt
 
 
 # -----------------------------------------------
-# Step: Finding PCNA genes (purged assembly)
+# Step 14: Finding PCNA genes (purged assembly)
 # -----------------------------------------------
-
+# Build a BLAST DB from BRAKER proteins on the purged assembly
 makeblastdb -in ../../../braker_out_beluga/purged_assembly/braker.aa -dbtype prot -out db/beluga_proteins_db
 
+# Search bowhead PCNA against the purged BRAKER proteins
 blastp -query ../bowhead_pcna_protein.fasta \
        -db db/beluga_proteins_db \
        -out pcna_beluga_blastp.out \
@@ -260,36 +336,44 @@ blastp -query ../bowhead_pcna_protein.fasta \
        -num_threads 16 \
        > blastp.stdout.log 2> blastp.stderr.log
 
+# Inspect GTF entries for candidate PCNA genes in the purged set
 grep "g2922" ../../../braker_out_beluga/purged_assembly/braker.gtf
 grep "g16715" ../../../braker_out_beluga/purged_assembly/braker.gtf
 grep -E '(^|[^0-9])g1497(\.t1)?([^0-9]|$)' ../../../braker_out_beluga/purged_assembly/braker.gtf
 
+# Quantify expression on purged assembly gene models
 featureCounts -T 16 -p \
   -a ../../braker_out_beluga/purged_assembly/braker.gtf \
   -o pcna_counts.txt \
   ../../purged.bam
 
+# Extract counts for genes of interest
 grep "g2922" pcna_counts.txt
 grep "g16715" pcna_counts.txt
 grep -E '(^|[^0-9])g1497(\.t1)?([^0-9]|$)' pcna_counts.txt
 
+# Run StringTie on the purged BAM guided by purged BRAKER GTF
 stringtie ../../purged.bam -p 16 -G ../../braker_out_beluga/purged_assembly/braker.gtf -o stringtie_assembled.gtf
 
+# Inspect resulting transcripts
 grep "g2922" stringtie_assembled.gtf
 grep "g16715" stringtie_assembled.gtf
 grep -E '(^|[^0-9])g1497(\.t1)?([^0-9]|$)' stringtie_assembled.gtf
 
+
 # -----------------------------------------------
-# Step: Promoter region analysis (purged assembly)
+# Step 15: Promoter region analysis (purged assembly)
 # -----------------------------------------------
+(Placeholder)
 
 
 # -----------------------------------------------
-# Step : Finding PCNA pseudogenes (original assembly)
+# Step 16: Finding PCNA pseudogenes (original assembly)
 # -----------------------------------------------
-
+# Build a nucleotide BLAST DB from the masked genome
 makeblastdb -in ../../RepeatMasker/assembly.fasta.masked.masked -dbtype nucl -out db/beluga_genome_db
 
+# Search bowhead PCNA protein against the genome to find homologous loci (including unannotated)
 tblastn -query ../bowhead_pcna_protein.fasta \
         -db db/beluga_genome_db \
         -evalue 1e-5 \
@@ -298,8 +382,11 @@ tblastn -query ../bowhead_pcna_protein.fasta \
         -num_threads 16 \
         > tblastn.stdout.log 2> tblastn.stderr.log
 
+# Extract a genomic window around a candidate hit for more detailed analysis
 samtools faidx ../../../RepeatMasker/assembly.fasta.masked.masked contig_1778:3962000-3965000 > contig_1778_pcna_region.fa
 
+# Use Exonerate (protein-to-genome) to refine exon/intron structure of the candidate region
+# --showtargetgff outputs GFF features; softmasking respects masked repeats
 exonerate \
   --model protein2genome \
   --softmasktarget yes \
@@ -310,15 +397,18 @@ exonerate \
   -t contig_1778_pcna_region.fa \
   > pcna_contig1778_exonerate.out
 
+# Count RNA-seq alignments overlapping the candidate region to assess expression support
 samtools view ../../../assembly.bam "contig_1778:3962000-3965000" | wc -l
 samtools view ../../../assembly.bam "contig_1778:3963178-3963939" | wc -l
 
-# -----------------------------------------------
-# Step : Finding PCNA pseudogenes (purged assembly)
-# -----------------------------------------------
 
+# -----------------------------------------------
+# Step 17: Finding PCNA pseudogenes (purged assembly)
+# -----------------------------------------------
+# Build a nucleotide BLAST DB from the purged masked genome
 makeblastdb -in ../../../RepeatMasker/purged.fa.masked.masked -dbtype nucl -out db/beluga_genome_db
 
+# TBLASTN search for PCNA-like matches on the purged assembly
 tblastn -query ../bowhead_pcna_protein.fasta \
         -db db/beluga_genome_db \
         -evalue 1e-5 \
@@ -326,5 +416,3 @@ tblastn -query ../bowhead_pcna_protein.fasta \
         -outfmt 6 \
         -num_threads 16 \
         > tblastn.stdout.log 2> tblastn.stderr.log
-
-
