@@ -283,6 +283,18 @@ grep "g16695" stringtie_assembled.gtf
 grep -E '(^|[^0-9])g1497(\.t1)?([^0-9]|$)' stringtie_assembled.gtf
 
 
+# -------- Checks --------
+# Search bowhead PCNA with a strict threshold for confirmation (evalue = 1e-25)
+blastp -query ../bowhead_pcna_protein.fasta \
+       -db db/beluga_proteins_db \
+       -out pcna_beluga_blastp.out \
+       -evalue 1e-25 \
+       -outfmt 6 \
+       -max_target_seqs 5 \
+       -num_threads 16 \
+       > blastp.stdout.log 2> blastp.stderr.log
+
+
 # -----------------------------------------------
 # Step 13: Promoter region analysis (original assembly)
 # -----------------------------------------------
