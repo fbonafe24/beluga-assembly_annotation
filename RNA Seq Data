@@ -1,0 +1,13 @@
+-------- # Download RNA Seq data --------
+for SRR in SRR5282288 SRR5282291 SRR5282292 SRR5282298; do   prefetch $SRR;   fasterq-dump $SRR --split-files --threads 4 -p; done
+# Concatenate R1 and R2 across liver runs.
+cat SRR5282288_1.fastq SRR5282291_1.fastq SRR5282292_1.fastq SRR5282298_1.fastq > liver_1.fastq
+cat SRR5282288_2.fastq SRR5282291_2.fastq SRR5282292_2.fastq SRR5282298_2.fastq > liver_2.fastq
+
+fasterq-dump SRR5990716 --split-files --threads 4 -p
+SRR5990716_1.fastq > mixed_1.fastq
+SRR5990716_2.fastq > mixed_2.fastq
+
+fasterq-dump SRR5990717 --split-files --threads 4 -p
+SRR5990717_1.fastq > lung_1.fastq
+SRR5990717_2.fastq > lung_2.fastq
