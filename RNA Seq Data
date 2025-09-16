@@ -1,4 +1,7 @@
--------- # Download RNA Seq data --------
+# -----------------------------------------------
+# Download RNA Seq data for Aurora (beluga)
+# -----------------------------------------------
+
 for SRR in SRR5282288 SRR5282291 SRR5282292 SRR5282298; do   prefetch $SRR;   fasterq-dump $SRR --split-files --threads 4 -p; done
 # Concatenate R1 and R2 across liver runs.
 cat SRR5282288_1.fastq SRR5282291_1.fastq SRR5282292_1.fastq SRR5282298_1.fastq > liver_1.fastq
