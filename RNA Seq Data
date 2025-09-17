@@ -2,15 +2,111 @@
 # Download RNA Seq data for Aurora (beluga)
 # -----------------------------------------------
 
+# -------- Download & organize RNA-seq data --------
+# Liver
 for SRR in SRR5282288 SRR5282291 SRR5282292 SRR5282298; do   prefetch $SRR;   fasterq-dump $SRR --split-files --threads 4 -p; done
 # Concatenate R1 and R2 across liver runs.
 cat SRR5282288_1.fastq SRR5282291_1.fastq SRR5282292_1.fastq SRR5282298_1.fastq > liver_1.fastq
 cat SRR5282288_2.fastq SRR5282291_2.fastq SRR5282292_2.fastq SRR5282298_2.fastq > liver_2.fastq
 
+# Mixed (brain, duodenum, heart, lung, spleen, and liver tissue)
 fasterq-dump SRR5990716 --split-files --threads 4 -p
-SRR5990716_1.fastq > mixed_1.fastq
-SRR5990716_2.fastq > mixed_2.fastq
+mv SRR5990716_1.fastq mixed_1.fastq
+mv SRR5990716_2.fastq mixed_2.fastq
 
+# Lung
 fasterq-dump SRR5990717 --split-files --threads 4 -p
-SRR5990717_1.fastq > lung_1.fastq
-SRR5990717_2.fastq > lung_2.fastq
+mv SRR5990717_1.fastq lung_1.fastq
+mv SRR5990717_2.fastq lung_2.fastq
+
+# Brain
+for SRR in SRR5282294 SRR5282295 SRR5282296 SRR5282297; do   prefetch $SRR;   fasterq-dump $SRR --split-files --threads 4 -p; done
+# Concatenate R1 and R2 across brain runs
+cat SRR5282294_1.fastq SRR5282295_1.fastq SRR5282296_1.fastq SRR5282297_1.fastq > brain_1.fastq
+cat SRR5282294_2.fastq SRR5282295_2.fastq SRR5282296_2.fastq SRR5282297_2.fastq > brain_2.fastq
+
+# Blood
+fasterq-dump SRR5990718 --split-files --threads 4 -p
+mv SRR5990718_1.fastq blood_1.fastq
+mv SRR5990718_2.fastq blood_2.fastq
+
+# -----------------------------------------------
+# Align each tissue separately to purged assembly
+# -----------------------------------------------
+# Liver
+hisat2 -x ../indexed_genome/purged -p 16 --dta -1 liver_1.fastq -2 liver_2.fastq | samtools sort -@ 16 -o liver.bam
+samtools index liver.bam
+
+# Lung
+hisat2 -x ../indexed_genome/purged -p 16 --dta -1 lung_1.fastq -2 lung_2.fastq | samtools sort -@ 16 -o lung.bam
+samtools index lung.bam
+
+# Mixed
+hisat2 -x ../indexed_genome/purged -p 16 --dta -1 mixed_1.fastq -2 mixed_2.fastq | samtools sort -@ 16 -o mixed.bam
+samtools index mixed.bam
+
+# Brain
+hisat2 -x ../indexed_genome/purged -p 16 --dta -1 brain_1.fastq -2 brain_2.fastq | samtools sort -@ 16 -o brain.bam
+samtools index brain.bam
+
+# Blood
+hisat2 -x ../indexed_genome/purged -p 16 --dta -1 blood_1.fastq -2 blood_2.fastq | samtools sort -@ 16 -o blood.bam
+samtools index blood.bam
+
+# Check mapping rates
+samtools flagstat liver.bam | head
+samtools flagstat lung.bam  | head
+samtools flagstat mixed.bam | head
+samtools flagstat brain.bam | head
+samtools flagstat serum.bam | head
+
+
+# -----------------------------------------------
+# Get raw counts (featureCounts)
+# -----------------------------------------------
+# Set path to purged gtf file
+GTF=/hdd1/jlabarcena/frances/PacBio_Flye/Annotation/braker_out_beluga/purged_assembly/braker.gtf
+
+# Liver
+featureCounts -T 16 -p -a "$GTF" -o liver.counts.txt ../../../RNASeq_data/liver.bam
+
+# Lung
+featureCounts -T 16 -p -a "$GTF" -o lung.counts.txt ../../../RNASeq_data/lung.bam
+
+# Mixed
+featureCounts -T 16 -p -a "$GTF" -o mixed.counts.txt ../../../RNASeq_data/mixed.bam
+
+# Brain
+featureCounts -T 16 -p -a "$GTF" -o brain.counts.txt ../../../RNASeq_data/brain.bam
+
+# Blood
+featureCounts -T 16 -p -a "$GTF" -o blood.counts.txt ../../../RNASeq_data/blood.bam
+
+grep "g2922" 
+grep "g16715" 
+grep -E '(^|[^0-9])g1497(\.t1)?([^0-9]|$)' 
+
+
+# -----------------------------------------------
+# Get TPM (StringTie)
+# -----------------------------------------------
+
+# liver
+stringtie ../../../RNASeq_data/liver.bam -e -G "$GTF" -p 16 -A liver.gene_abund.tab -o liver.gtf
+
+# lung
+stringtie ../../../RNASeq_data/lung.bam -e -G "$GTF" -p 16 -A lung.gene_abund.tab -o lung.gtf
+
+# mixed
+stringtie ../../../RNASeq_data/mixed.bam -e -G "$GTF" -p 16 -A mixed.gene_abund.tab -o mixed.gtf
+
+# brain
+stringtie ../../../RNASeq_data/brain.bam -e -G "$GTF" -p 16 -A brain.gene_abund.tab -o brain.gtf
+
+# blood
+stringtie ../../../RNASeq_data/mixed.bam -e -G "$GTF" -p 16 -A blood.gene_abund.tab -o blood.gtf
+
+grep "g2922" 
+grep "g16715" 
+grep -E '(^|[^0-9])g1497(\.t1)?([^0-9]|$)' 
+
