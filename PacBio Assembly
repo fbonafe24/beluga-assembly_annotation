@@ -255,7 +255,7 @@ blastp -query bowhead_pcna_protein.fasta \
 # Extract gene model coordinates for candidate PCNA hits from GTF
 grep "g2928" ../braker_out_beluga/braker.gtf > g2928
 grep "g16695" ../braker_out_beluga/braker.gtf
-grep -E '(^|[^0-9])g1497(\.t1)?([^0-9]|$)' ../braker_out_beluga/braker.gtf
+grep -w 'g1497' ../braker_out_beluga/braker.gtf
 
 # Check protein sequences
 grep -A5 "g2928.t1" ../braker_out_beluga/braker.aa
@@ -272,7 +272,7 @@ featureCounts -T 16 -p \
 # Extract counts for the genes of interest from the featureCounts table
 grep "g2928" pcna_counts.txt
 grep "g16695" pcna_counts.txt
-grep -E '(^|[^0-9])g1497(\.t1)?([^0-9]|$)' pcna_counts.txt
+grep -w 'g1497' pcna_counts.txt
 
 # Assemble transcripts with StringTie guided by the BRAKER GTF; produces a new GTF
 stringtie ../assembly.bam -p 16 -G ../braker_out_beluga/braker.gtf -o stringtie_assembled.gtf
@@ -280,7 +280,7 @@ stringtie ../assembly.bam -p 16 -G ../braker_out_beluga/braker.gtf -o stringtie_
 # Check whether StringTie produced transcripts for the target genes
 grep "g2928" stringtie_assembled.gtf
 grep "g16695" stringtie_assembled.gtf
-grep -E '(^|[^0-9])g1497(\.t1)?([^0-9]|$)' stringtie_assembled.gtf
+grep -w 'g1497'' stringtie_assembled.gtf
 
 
 # -------- Checks --------
@@ -351,7 +351,7 @@ blastp -query ../bowhead_pcna_protein.fasta \
 # Inspect GTF entries for candidate PCNA genes in the purged set
 grep "g2922" ../../../braker_out_beluga/purged_assembly/braker.gtf
 grep "g16715" ../../../braker_out_beluga/purged_assembly/braker.gtf
-grep -E '(^|[^0-9])g1497(\.t1)?([^0-9]|$)' ../../../braker_out_beluga/purged_assembly/braker.gtf
+grep -w 'g1497' ../../../braker_out_beluga/purged_assembly/braker.gtf
 
 # Quantify expression on purged assembly gene models
 featureCounts -T 16 -p \
@@ -362,7 +362,7 @@ featureCounts -T 16 -p \
 # Extract counts for genes of interest
 grep "g2922" pcna_counts.txt
 grep "g16715" pcna_counts.txt
-grep -E '(^|[^0-9])g1497(\.t1)?([^0-9]|$)' pcna_counts.txt
+grep -w 'g1497' pcna_counts.txt
 
 # Run StringTie on the purged BAM guided by purged BRAKER GTF
 stringtie ../../purged.bam -p 16 -G ../../braker_out_beluga/purged_assembly/braker.gtf -o stringtie_assembled.gtf
@@ -370,7 +370,7 @@ stringtie ../../purged.bam -p 16 -G ../../braker_out_beluga/purged_assembly/brak
 # Inspect resulting transcripts
 grep "g2922" stringtie_assembled.gtf
 grep "g16715" stringtie_assembled.gtf
-grep -E '(^|[^0-9])g1497(\.t1)?([^0-9]|$)' stringtie_assembled.gtf
+grep -w 'g1497' stringtie_assembled.gtf
 
 
 # -----------------------------------------------
