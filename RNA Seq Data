@@ -84,7 +84,7 @@ featureCounts -T 16 -p -a "$GTF" -o blood.counts.txt ../../../RNASeq_data/blood.
 
 grep "g2922" 
 grep "g16715" 
-grep -E '(^|[^0-9])g1497(\.t1)?([^0-9]|$)' 
+grep -w 'g1497' 
 
 
 # -----------------------------------------------
@@ -108,5 +108,5 @@ stringtie ../../../RNASeq_data/mixed.bam -e -G "$GTF" -p 16 -A blood.gene_abund.
 
 grep "g2922" 
 grep "g16715" 
-grep -E '(^|[^0-9])g1497(\.t1)?([^0-9]|$)' 
+grep -w 'g1497' 
 
