@@ -1,0 +1,103 @@
+# -----------------------------------------------
+# Download RNA Seq data for Bowhead
+# -----------------------------------------------
+
+# Retina
+fasterq-dump SRR1685417 --split-files --threads 4 -p
+mv SRR1685417_1.fastq retina_1.fastq
+mv SRR1685417_2.fastq retina_2.fastq
+
+# Testes
+fasterq-dump SRR1685416 --split-files --threads 4 -p
+mv SRR1685416_1.fastq testes_1.fastq
+mv SRR1685416_2.fastq testes_2.fastq
+
+# Cerebellum
+fasterq-dump SRR1685414 --split-files --threads 4 -p
+mv SRR1685414_1.fastq cerebellum_1.fastq
+mv SRR1685414_2.fastq cerebellum_2.fastq
+
+# Heart
+fasterq-dump SRR1685413 --split-files --threads 4 -p
+mv SRR1685413_1.fastq heart_1.fastq
+mv SRR1685413_2.fastq heart_2.fastq
+
+# Liver
+fasterq-dump SRR1685415 --split-files --threads 4 -p
+mv SRR1685415_1.fastq liver_1.fastq
+mv SRR1685415_2.fastq liver_2.fastq
+
+# Kidney
+fasterq-dump SRR1685390 --split-files --threads 4 -p
+mv SRR1685390_1.fastq kidney_1.fastq
+mv SRR1685390_2.fastq kidney_2.fastq
+
+# Muscle
+fasterq-dump SRR1685388 --split-files --threads 4 -p
+mv SRR1685388_1.fastq muscle_1.fastq
+mv SRR1685388_2.fastq muscle_2.fastq
+
+# -----------------------------------------------
+# Genome index
+# -----------------------------------------------
+# Build genome index
+hisat2-build scaffolds.fasta bowhead_index
+
+# -----------------------------------------------
+# Align each tissue separately to assembly
+# -----------------------------------------------
+
+# Retina
+hisat2 -x ../indexed_genome/bowhead_index -p 16 --dta -1 retina_1.fastq -2 retina_2.fastq | samtools sort -@ 16 -o retina.bam
+samtools index retina.bam
+
+# Testes
+hisat2 -x ../indexed_genome/bowhead_index -p 16 --dta -1 testes_1.fastq -2 testes_2.fastq | samtools sort -@ 16 -o testes.bam
+samtools index testes.bam
+
+# Cerebellum
+hisat2 -x ../indexed_genome/bowhead_index -p 16 --dta -1 cerebellum_1.fastq -2 cerebellum_2.fastq | samtools sort -@ 16 -o cerebellum.bam
+samtools index cerebellum.bam
+
+# Heart
+hisat2 -x ../indexed_genome/bowhead_index -p 16 --dta -1 heart_1.fastq -2 heart_2.fastq | samtools sort -@ 16 -o heart.bam
+samtools index heart.bam
+
+# Liver
+hisat2 -x ../indexed_genome/bowhead_index -p 16 --dta -1 liver_1.fastq -2 liver_2.fastq | samtools sort -@ 16 -o liver.bam
+samtools index liver.bam
+
+# Kidney
+hisat2 -x ../indexed_genome/bowhead_index -p 16 --dta -1 kidney_1.fastq -2 kidney_2.fastq | samtools sort -@ 16 -o kidney.bam
+samtools index kidney.bam
+
+# Muscle
+hisat2 -x ../indexed_genome/bowhead_index -p 16 --dta -1 muscle_1.fastq -2 muscle_2.fastq | samtools sort -@ 16 -o muscle.bam
+samtools index muscle.bam
+
+# -----------------------------------------------
+# FeatureCounts
+# -----------------------------------------------
+# Retina
+featureCounts -T 16 -p -a ../genome.gtf -o retina.counts.txt  ../RNASeq/retina.bam
+
+# Testes
+featureCounts -T 16 -p -a ../genome.gtf -o testes.counts.txt  ../RNASeq/testes.bam
+
+# Cerebellum
+featureCounts -T 16 -p -a ../genome.gtf -o cerebellum.counts.txt  ../RNASeq/cerebellum.bam
+
+# Heart
+featureCounts -T 16 -p -a ../genome.gtf -o heart.counts.txt  ../RNASeq/heart.bam
+
+# Liver
+featureCounts -T 16 -p -a ../genome.gtf -o liver.counts.txt  ../RNASeq/liver.bam
+
+# Kidney
+featureCounts -T 16 -p -a ../genome.gtf -o kidney.counts.txt  ../RNASeq/kidney.bam
+
+# Muscle
+featureCounts -T 16 -p -a ../genome.gtf -o muscle.counts.txt  ../RNASeq/muscle.bam
+
+grep 'bmy_21945T0'
+
