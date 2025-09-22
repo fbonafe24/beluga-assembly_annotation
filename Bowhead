@@ -1,4 +1,19 @@
 # -----------------------------------------------
+# PCNA Identification
+# -----------------------------------------------
+# Identify PCNA sequences
+makeblastdb -in ../bowhead_whale_proteins.fasta -dbtype prot -out db/bowhead_prot_db
+
+
+blastp -query dolphin_pcna.faa \
+  -db db/bowhead_prot_db \
+  -out pcna_blastp.out \
+  -outfmt 6 \
+  -evalue 1e-10 \
+  -num_threads 16 \
+  > blastp.stdout.log 2> blastp.stderr.log
+
+# -----------------------------------------------
 # Download RNA Seq data for Bowhead
 # -----------------------------------------------
 
@@ -99,5 +114,76 @@ featureCounts -T 16 -p -a ../genome.gtf -o kidney.counts.txt  ../RNASeq/kidney.b
 # Muscle
 featureCounts -T 16 -p -a ../genome.gtf -o muscle.counts.txt  ../RNASeq/muscle.bam
 
-grep 'bmy_21945T0'
+grep 'bmy_21945'
+grep 'bmy_16007'
 
+awk 'BEGIN{OFS="\t"} !/^#/ && NR>1 {print $1, $NF}' retina.counts.txt > retina.tmp
+awk 'BEGIN{OFS="\t"} !/^#/ && NR>1 {print $1, $NF}' testes.counts.txt >  testes.tmp
+awk 'BEGIN{OFS="\t"} !/^#/ && NR>1 {print $1, $NF}' cerebellum.counts.txt > cerebellum.tmp
+awk 'BEGIN{OFS="\t"} !/^#/ && NR>1 {print $1, $NF}' heart.counts.txt > heart.tmp
+awk 'BEGIN{OFS="\t"} !/^#/ && NR>1 {print $1, $NF}' liver.counts.txt  > liver.tmp
+awk 'BEGIN{OFS="\t"} !/^#/ && NR>1 {print $1, $NF}' kidney.counts.txt > kidney.tmp
+awk 'BEGIN{OFS="\t"} !/^#/ && NR>1 {print $1, $NF}' muscle.counts.txt  > muscle.tmp
+
+join -t $'\t' <(sort -k1,1 retina.tmp) <(sort -k1,1 testes.tmp) \
+| join -t $'\t' - <(sort -k1,1 cerebellum.tmp) \
+| join -t $'\t' - <(sort -k1,1 heart.tmp) \
+| join -t $'\t' - <(sort -k1,1 liver.tmp) \
+| join -t $'\t' - <(sort -k1,1 kidney.tmp) \
+| join -t $'\t' - <(sort -k1,1 muscle.tmp) \
+| awk 'BEGIN{OFS="\t"; print "Geneid","retina_count","testes_count","cerebellum_count","heart_count","liver_count","kidney_count","muscle_count"}{print}' \
+> summary_featureCounts.tsv
+
+printf "bmy_21945\nbmy_16007\n" > pcna.ids
+{ head -n1 summary_featureCounts.tsv
+  grep -w -F -f pcna.ids summary_featureCounts.tsv; } \
+> summary_featureCounts_PCNA.tsv
+
+# -----------------------------------------------
+# StringTie
+# -----------------------------------------------
+
+
+# Retina
+stringtie ../RNASeq/retina.bam -e -G ../genome.gtf -p 16 -A retina.gene_abund.tab -o retina.gtf
+
+# Testes
+stringtie ../RNASeq/testes.bam -e -G ../genome.gtf -p 16 -A testes.gene_abund.tab -o testes.gtf
+
+# Cerebellum
+stringtie ../RNASeq/cerebellum.bam -e -G ../genome.gtf -p 16 -A cerebellum.gene_abund.tab -o cerebellum.gtf
+
+# Heart
+stringtie ../RNASeq/heart.bam -e -G ../genome.gtf -p 16 -A heart.gene_abund.tab -o heart.gtf
+
+# Liver
+stringtie ../RNASeq/liver.bam -e -G ../genome.gtf -p 16 -A liver.gene_abund.tab -o liver.gtf
+
+# Kidney
+stringtie ../RNASeq/kidney.bam -e -G ../genome.gtf -p 16 -A kidney.gene_abund.tab -o kidney.gtf
+
+# Muscle
+stringtie ../RNASeq/muscle.bam -e -G ../genome.gtf -p 16 -A muscle.gene_abund.tab -o muscle.gtf
+
+awk 'BEGIN{OFS="\t"} NR>1 {print $1, $9}' retina.gene_abund.tab > retina.tmp
+awk 'BEGIN{OFS="\t"} NR>1 {print $1, $9}' testes.gene_abund.tab >  testes.tmp
+awk 'BEGIN{OFS="\t"} NR>1 {print $1, $9}' cerebellum.gene_abund.tab > cerebellum.tmp
+awk 'BEGIN{OFS="\t"} NR>1 {print $1, $9}' heart.gene_abund.tab > heart.tmp
+awk 'BEGIN{OFS="\t"} NR>1 {print $1, $9}' liver.gene_abund.tab  > liver.tmp
+awk 'BEGIN{OFS="\t"} NR>1 {print $1, $9}' kidney.gene_abund.tab > kidney.tmp
+awk 'BEGIN{OFS="\t"} NR>1 {print $1, $9}' muscle.gene_abund.tab  > muscle.tmp
+
+join -t $'\t' <(sort -k1,1 retina.tmp) <(sort -k1,1 testes.tmp) \
+| join -t $'\t' - <(sort -k1,1 cerebellum.tmp) \
+| join -t $'\t' - <(sort -k1,1 heart.tmp) \
+| join -t $'\t' - <(sort -k1,1 liver.tmp) \
+| join -t $'\t' - <(sort -k1,1 kidney.tmp) \
+| join -t $'\t' - <(sort -k1,1 muscle.tmp) \
+| awk 'BEGIN{OFS="\t"; print "Geneid","retina_TPM","testes_TPM","cerebellum_TPM","heart_TPM","liver_TPM","kidney_TPM","muscle_TPM"}{print}' \
+> summary_TPM.tsv
+
+printf "bmy_21945\nbmy_16007\n" > pcna.ids
+
+{ head -n1 summary_TPM.tsv 
+  grep -w -F -f pcna.ids summary_TPM.tsv; } \
+  > summary_TPM_PCNA.tsv
