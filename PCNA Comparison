@@ -1,0 +1,55 @@
+# -----------------------------------------------
+# Protein Alignment
+# -----------------------------------------------
+# Create conda environment
+conda create -n pcna-align -c conda-forge -c bioconda mafft trimal iqtree biopython seqkit clustalo emboss -y
+
+# Quality check
+seqkit stats proteins.fasta
+seqkit fx2tab -n -l proteins.fasta
+
+# MSA
+mafft --localpair --maxiterate 1000 --thread 16 proteins.fasta > proteins.aln.fasta
+
+# Percent Identity
+clustalo -i proteins.fasta \
+  --full --force \
+  --percent-id \
+  --distmat-out clustalo.pid.proteins.txt
+
+# Tree
+iqtree -s proteins.aln.fasta -m MFP -B 1000 --alrt 1000 -T 8
+
+# -----------------------------------------------
+# Protein Alignment
+# -----------------------------------------------
+# Conda
+conda install -c bioconda hyphy jq snp-sites macse -y
+
+# Quality check
+seqkit stats cds.fasta
+seqkit fx2tab -n -l cds.fasta
+transeq -sequence cds.fasta -outseq cds.translated.fasta -table 1 -clean
+grep '\*' -n cds.translated.fasta && echo "stop(s) detected"
+
+
+# Codon Alignment
+# Back-translate to codon alignment
+tranalign \
+  -asequence cds.fasta \
+  -bsequence protein/proteins.aln.fasta \
+  -outseq codon.aln.fna
+
+# Mutation id
+# Sitewise Likelihood Ancestral Counting (SLAC)
+hyphy slac \
+  --alignment codon.aln.fna \
+  --tree protein/proteins.aln.fasta.treefile \
+  --output slac.json \
+  --branches All
+
+
+
+
+
+
