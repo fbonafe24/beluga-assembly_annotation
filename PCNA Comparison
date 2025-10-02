@@ -21,7 +21,7 @@ clustalo -i proteins.fasta \
 iqtree -s proteins.aln.fasta -m MFP -B 1000 --alrt 1000 -T 8
 
 # -----------------------------------------------
-# Protein Alignment
+# CDS Alignment
 # -----------------------------------------------
 # Conda
 conda install -c bioconda hyphy jq snp-sites macse -y
@@ -40,6 +40,8 @@ tranalign \
   -bsequence protein/proteins.aln.fasta \
   -outseq codon.aln.fna
 
+python codon_variant_table.py codon.aln.fna Human_PCNA > pcna_codon_variants.tsv
+
 # Mutation id
 # Sitewise Likelihood Ancestral Counting (SLAC)
 hyphy slac \
@@ -50,6 +52,9 @@ hyphy slac \
 
 
 
+tranalign \
+  -asequence mammals_cds.fasta \
+  -bsequence ../../protein/withmouse/mammals_protein.aln.fasta \
+  -outseq mammals_codon.aln.fna
 
-
-
+python ../withff/codon_variant_table.py mammals_codon.aln.fna Human_PCNA > codon_variants.tsv
