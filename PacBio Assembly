@@ -428,3 +428,51 @@ tblastn -query ../bowhead_pcna_protein.fasta \
         -outfmt 6 \
         -num_threads 16 \
         > tblastn.stdout.log 2> tblastn.stderr.log
+
+# BLASTN for 
+blastn \
+  -task blastn-short \
+  -query pseudogene1_pcna.fasta \
+  -db ../tblastn/db/beluga_genome_db \
+  -word_size 7 \
+  -dust no \
+  -soft_masking false \
+  -evalue 1e5 \
+  -perc_identity 85 \
+  -max_target_seqs 25 \
+  -outfmt '6 std sstrand' \
+  > hits.tsv
+
+blastn \
+  -task blastn-short \
+  -query pseudogene1_pcna.fasta \
+  -db ../tblastn/db/beluga_genome_db \
+  -word_size 7 \
+  -dust no \
+  -soft_masking false \
+  -evalue 1e5 \
+  -perc_identity 75 \
+  -qcov_hsp_perc 50 \
+  -outfmt '6 std sstrand' \
+  -max_target_seqs 25 \
+  > hits.tsv
+
+
+blastn \
+  -task blastn-short \
+  -query pseudogene1_pcna.fasta \
+  -db ../tblastn/db/beluga_genome_db \
+  -word_size 7 \
+  -dust no \
+  -soft_masking false \
+  -evalue 1e3 \
+  -perc_identity 85 \
+  -qcov_hsp_perc 50 \
+  -max_hsps 10 \
+  -culling_limit 0 \
+  -outfmt '6 std sstrand' \
+  -max_target_seqs 25 \
+  > hits.tsv
+
+
+samtools faidx ../../../RepeatMasker/assembly.fasta.masked.masked contig_1778:3962000-3965000 > contig_1778_pcna_region.fa
