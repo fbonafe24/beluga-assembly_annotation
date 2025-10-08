@@ -57,4 +57,5 @@ tranalign \
   -bsequence ../../protein/withmouse/mammals_protein.aln.fasta \
   -outseq mammals_codon.aln.fna
 
-python ../withff/codon_variant_table.py mammals_codon.aln.fna Human_PCNA > codon_variants.tsv
+python ../codon_variant_table.py mammals_codon.aln.fna Human_PCNA > codon_variants.tsv
+
