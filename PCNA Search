@@ -55,3 +55,61 @@ tblastn -query ../../PCNA/data/cow/protein.faa \
         -outfmt 6 \
         -num_threads 16 \
         > tblastn.stdout.log 2> tblastn.stderr.log
+
+
+# -----------------------------------------------
+# PCNA Identification for NA Right Whale (protein level)
+# -----------------------------------------------
+
+makeblastdb  -in ../../GCF_009873245.2_mBalMus1.pri.v3_protein.faa -dbtype prot -out bluewhale_prot_db
+
+blastp -query ../../PCNA/data/cow/protein.faa \
+  -db db/bluewhale_prot_db \
+  -out pcna_blastp.out \
+  -outfmt 6 \
+  -evalue 1e-10 \
+  -num_threads 16 \
+  > blastp.stdout.log 2> blastp.stderr.log
+
+# -----------------------------------------------
+# PCNA Identification for NA Right Whale (dna level)
+# -----------------------------------------------
+
+makeblastdb -in ../../GCF_009873245.2_mBalMus1.pri.v3_genomic.fna -dbtype nucl -out bluewhale_genome_db
+
+tblastn -query ../../PCNA/data/cow/protein.faa \
+        -db db/bluewhale_genome_db \
+        -evalue 1e-5 \
+        -out pcna_tblastn.out \
+        -outfmt 6 \
+        -num_threads 16 \
+        > tblastn.stdout.log 2> tblastn.stderr.log
+
+# -----------------------------------------------
+# PCNA Identification for Harbour Porpoise (protein level)
+# -----------------------------------------------
+
+makeblastdb  -in ../../GCF_963924675.1_mPhoPho1.1_protein.faa -dbtype prot -out hporpoise_prot_db
+
+blastp -query ../../PCNA/data/cow/protein.faa \
+  -db db/hporpoise_prot_db \
+  -out pcna_blastp.out \
+  -outfmt 6 \
+  -evalue 1e-10 \
+  -num_threads 16 \
+  > blastp.stdout.log 2> blastp.stderr.log
+
+# -----------------------------------------------
+# PCNA Identification for NA Right Whale (dna level)
+# -----------------------------------------------
+
+makeblastdb -in ../../GCF_963924675.1_mPhoPho1.1_genomic.fna -dbtype nucl -out hporpoise_genome_db
+
+tblastn -query ../../PCNA/data/cow/protein.faa \
+        -db db/hporpoise_genome_db \
+        -evalue 1e-5 \
+        -out pcna_tblastn.out \
+        -outfmt 6 \
+        -num_threads 16 \
+        > tblastn.stdout.log 2> tblastn.stderr.log
+
