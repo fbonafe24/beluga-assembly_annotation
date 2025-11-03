@@ -1,0 +1,57 @@
+# -----------------------------------------------
+# PCNA Identification for Dolphin (protein level)
+# -----------------------------------------------
+makeblastdb  -in ../../GCF_011762595.2_mTurTru1.mat.Y_protein.faa -dbtype prot -out dolphin_prot_db
+
+blastp -query ../../PCNA/data/cow/protein.faa \
+  -db db/dolphin_prot_db \
+  -out pcna_blastp.out \
+  -outfmt 6 \
+  -evalue 1e-10 \
+  -num_threads 16 \
+  > blastp.stdout.log 2> blastp.stderr.log
+
+# -----------------------------------------------
+# PCNA Identification for Dolphin (dna level)
+# -----------------------------------------------
+
+makeblastdb -in ../../GCF_011762595.2_mTurTru1.mat.Y_genomic.fna -dbtype nucl -out dolphin_genome_db
+
+tblastn -query ../../PCNA/data/cow/protein.faa \
+        -db db/dolphin_genome_db \
+        -evalue 1e-5 \
+        -out pcna_tblastn.out \
+        -outfmt 6 \
+        -num_threads 16 \
+        > tblastn.stdout.log 2> tblastn.stderr.log
+
+
+
+# -----------------------------------------------
+# PCNA Identification for NA Right Whale (protein level)
+# -----------------------------------------------
+
+makeblastdb  -in ../../GCF_028564815.1_mEubGla1.1.hap2._XY_protein.faa -dbtype prot -out NARwhale_prot_db
+
+blastp -query ../../PCNA/data/cow/protein.faa \
+  -db db/NARwhale_prot_db \
+  -out pcna_blastp.out \
+  -outfmt 6 \
+  -evalue 1e-10 \
+  -num_threads 16 \
+  > blastp.stdout.log 2> blastp.stderr.log
+
+
+# -----------------------------------------------
+# PCNA Identification for NA Right Whale (dna level)
+# -----------------------------------------------
+
+makeblastdb -in ../../GCF_028564815.1_mEubGla1.1.hap2._XY_genomic.fna -dbtype nucl -out NARwhale_genome_db
+
+tblastn -query ../../PCNA/data/cow/protein.faa \
+        -db db/NARwhale_genome_db \
+        -evalue 1e-5 \
+        -out pcna_tblastn.out \
+        -outfmt 6 \
+        -num_threads 16 \
+        > tblastn.stdout.log 2> tblastn.stderr.log
