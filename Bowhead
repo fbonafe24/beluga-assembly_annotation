@@ -187,3 +187,18 @@ printf "bmy_21945\nbmy_16007\n" > pcna.ids
 { head -n1 summary_TPM.tsv 
   grep -w -F -f pcna.ids summary_TPM.tsv; } \
   > summary_TPM_PCNA.tsv
+
+
+# -----------------------------------------------
+# PCNA Pseudogene Identification
+# -----------------------------------------------
+makeblastdb -in ../../../scaffolds.fasta -dbtype nucl -out bowhead_genome_db
+
+tblastn -query ../blastp/dolphin_pcna.faa \
+        -db db/bowhead_genome_db \
+        -evalue 1e-5 \
+        -out pcna_pseudogene_tblastn.out \
+        -outfmt 6 \
+        -num_threads 16 \
+        > tblastn.stdout.log 2> tblastn.stderr.log
+
