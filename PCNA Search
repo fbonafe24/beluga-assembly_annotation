@@ -26,7 +26,6 @@ tblastn -query ../../PCNA/data/cow/protein.faa \
         > tblastn.stdout.log 2> tblastn.stderr.log
 
 
-
 # -----------------------------------------------
 # PCNA Identification for NA Right Whale (protein level)
 # -----------------------------------------------
@@ -107,6 +106,88 @@ makeblastdb -in ../../GCF_963924675.1_mPhoPho1.1_genomic.fna -dbtype nucl -out h
 
 tblastn -query ../../PCNA/data/cow/protein.faa \
         -db db/hporpoise_genome_db \
+        -evalue 1e-5 \
+        -out pcna_tblastn.out \
+        -outfmt 6 \
+        -num_threads 16 \
+        > tblastn.stdout.log 2> tblastn.stderr.log
+
+# -----------------------------------------------
+# PCNA Identification for Minke Whale (protein level)
+# -----------------------------------------------
+makeblastdb  -in ../../GCF_949987535.1_mBalAcu1.1_protein.faa -dbtype prot -out minke_prot_db
+
+blastp -query ../../PCNA/data/cow/protein.faa \
+  -db db/minke_prot_db \
+  -out pcna_blastp.out \
+  -outfmt 6 \
+  -evalue 1e-10 \
+  -num_threads 16 \
+  > blastp.stdout.log 2> blastp.stderr.log
+
+# -----------------------------------------------
+# PCNA Identification for Minke (dna level) 
+# -----------------------------------------------
+
+makeblastdb -in ../../GCF_949987535.1_mBalAcu1.1_genomic.fna -dbtype nucl -out minke_genome_db
+
+tblastn -query ../../PCNA/data/cow/protein.faa \
+        -db db/minke_genome_db \
+        -evalue 1e-5 \
+        -out pcna_tblastn.out \
+        -outfmt 6 \
+        -num_threads 16 \
+        > tblastn.stdout.log 2> tblastn.stderr.log
+
+# -----------------------------------------------
+# PCNA Identification for Long-finned Pilot (protein level)
+# -----------------------------------------------
+makeblastdb  -in ../../GCF_963455315.2_mGloMel1.2_protein.faa -dbtype prot -out lfpilot_prot_db
+
+blastp -query ../../PCNA/data/cow/protein.faa \
+  -db db/lfpilot_prot_db \
+  -out pcna_blastp.out \
+  -outfmt 6 \
+  -evalue 1e-10 \
+  -num_threads 16 \
+  > blastp.stdout.log 2> blastp.stderr.log
+
+# -----------------------------------------------
+# PCNA Identification for Long-finned Pilot (dna level) 
+# -----------------------------------------------
+
+makeblastdb -in ../../GCF_963455315.2_mGloMel1.2_genomic.fna -dbtype nucl -out lfpilot_genome_db
+
+tblastn -query ../../PCNA/data/cow/protein.faa \
+        -db db/lfpilot_genome_db \
+        -evalue 1e-5 \
+        -out pcna_tblastn.out \
+        -outfmt 6 \
+        -num_threads 16 \
+        > tblastn.stdout.log 2> tblastn.stderr.log
+
+
+# -----------------------------------------------
+# PCNA Identification for Orca (protein level)
+# -----------------------------------------------
+makeblastdb  -in ../../GCF_937001465.1_mOrcOrc1.1_protein.faa -dbtype prot -out orca_prot_db
+
+blastp -query ../../PCNA/data/cow/protein.faa \
+  -db db/orca_prot_db \
+  -out pcna_blastp.out \
+  -outfmt 6 \
+  -evalue 1e-10 \
+  -num_threads 16 \
+  > blastp.stdout.log 2> blastp.stderr.log
+
+# -----------------------------------------------
+# PCNA Identification for Orca(dna level) 
+# -----------------------------------------------
+
+makeblastdb -in ../../GCF_937001465.1_mOrcOrc1.1_genomic.fna -dbtype nucl -out orca_genome_db
+
+tblastn -query ../../PCNA/data/cow/protein.faa \
+        -db db/orca_genome_db \
         -evalue 1e-5 \
         -out pcna_tblastn.out \
         -outfmt 6 \
