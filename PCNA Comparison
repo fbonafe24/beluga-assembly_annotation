@@ -18,7 +18,7 @@ clustalo -i proteins.fasta \
   --distmat-out clustalo.pid.proteins.txt
 
 # Tree
-iqtree -s proteins.aln.fasta -m MFP -B 1000 --alrt 1000 -T 8
+iqtree -s proteins.aln.fasta -m MFP -B 1000 --alrt 1000 -T 8 --keep-ident
 
 # -----------------------------------------------
 # CDS Alignment
