@@ -330,3 +330,30 @@ tblastn -query ../../PCNA/data/cow/protein.faa \
         -outfmt 6 \
         -num_threads 16 \
         > tblastn.stdout.log 2> tblastn.stderr.log
+
+# -----------------------------------------------
+# PCNA Identification for Yangtze River Dolphin (protein level)
+# -----------------------------------------------
+makeblastdb  -in ../../GCF_000442215.2_Lipotes_vexillifer_v1.1_protein.faa -dbtype prot -out yangtze_prot_db
+
+blastp -query ../../PCNA/data/cow/protein.faa \
+  -db db/yangtze_prot_db \
+  -out pcna_blastp.out \
+  -outfmt 6 \
+  -evalue 1e-10 \
+  -num_threads 16 \
+  > blastp.stdout.log 2> blastp.stderr.log
+
+# -----------------------------------------------
+# PCNA Identification Yangtze River Dolphin (dna level) 
+# -----------------------------------------------
+
+makeblastdb -in ../../GCF_000442215.2_Lipotes_vexillifer_v1.1_genomic.fna  -dbtype nucl -out yangtze_genome_db
+
+tblastn -query ../../PCNA/data/cow/protein.faa \
+        -db db/yangtze_genome_db \
+        -evalue 1e-5 \
+        -out pcna_tblastn.out \
+        -outfmt 6 \
+        -num_threads 16 \
+        > tblastn.stdout.log 2> tblastn.stderr.log
