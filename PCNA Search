@@ -25,6 +25,33 @@ tblastn -query ../../PCNA/data/cow/protein.faa \
         -num_threads 16 \
         > tblastn.stdout.log 2> tblastn.stderr.log
 
+# -----------------------------------------------
+# RNASeq data for Common Bottlenose Dolphin
+# -----------------------------------------------
+# Skin (single)
+for SRR in SRR5080610 SRR5080612 SRR5080613; do prefetch $SRR; fasterq-dump $SRR --split-files -p; done
+cat SRR5080610.fastq SRR5080612.fastq SRR5080613.fastq > skin.fastq
+
+# Blubber (paired)
+DRR513289
+DRR513290
+DRR513291
+
+# Build genome index
+hisat2-build ../GCF_011762595.2_mTurTru1.mat.Y_genomic.fna combotdolphin_index
+
+# Align tissue to assembly
+hisat2 -x ../indexed_genome/combotdolphin_index -p 16 --dta -U skin.fastq | samtools sort -@ 16 -o skin.bam
+samtools index skin.bam
+
+# -----------------------------------------------
+# FeatureCounts
+# -----------------------------------------------
+# Retina
+featureCounts -T 16 -p -a ../GCF_011762595.2_mTurTru1.mat.Y_genomic.gtf -o skin.counts.txt  ../rnaseq/skin.bam
+
+
+
 
 # -----------------------------------------------
 # PCNA Identification for NA Right Whale (protein level)
@@ -55,9 +82,28 @@ tblastn -query ../../PCNA/data/cow/protein.faa \
         -num_threads 16 \
         > tblastn.stdout.log 2> tblastn.stderr.log
 
+# -----------------------------------------------
+# RNASeq data for NA Right Whale
+# -----------------------------------------------
+# Kidney
+prefetch SRR25888833; fasterq-dump SRR25888833 --split-files -p
+
+mv SRR25888833_1.fastq kidney_1.fastq
+mv SRR25888833_2.fastq kidney_2.fastq
+
+# Build genome index
+hisat2-build ../GCF_028564815.1_mEubGla1.1.hap2._XY_genomic.fna NARwhale_index
+
+# Align tissue to assembly
+hisat2 -x ../indexed_genome/NARwhale_index -p 16 --dta -1 kidney_1.fastq -2 kidney_2.fastq | samtools sort -@ 16 -o kidney.bam
+samtools index kidney.bam
+
+
+
+
 
 # -----------------------------------------------
-# PCNA Identification for NA Right Whale (protein level)
+# PCNA Identification for Blue Whale (protein level)
 # -----------------------------------------------
 
 makeblastdb  -in ../../GCF_009873245.2_mBalMus1.pri.v3_protein.faa -dbtype prot -out bluewhale_prot_db
@@ -71,7 +117,7 @@ blastp -query ../../PCNA/data/cow/protein.faa \
   > blastp.stdout.log 2> blastp.stderr.log
 
 # -----------------------------------------------
-# PCNA Identification for NA Right Whale (dna level)
+# PCNA Identification for Blue Whale (dna level)
 # -----------------------------------------------
 
 makeblastdb -in ../../GCF_009873245.2_mBalMus1.pri.v3_genomic.fna -dbtype nucl -out bluewhale_genome_db
@@ -83,6 +129,37 @@ tblastn -query ../../PCNA/data/cow/protein.faa \
         -outfmt 6 \
         -num_threads 16 \
         > tblastn.stdout.log 2> tblastn.stderr.log
+
+# -----------------------------------------------
+# RNASeq data for Blue Whale 
+# -----------------------------------------------
+# Skin
+fasterq-dump SRR8270603 --split-files -p 
+
+mv SRR8270603_1.fastq skin_1.fastq
+mv SRR8270603_2.fastq skin_2.fastq
+
+# Epidermis and Blubber, Fibroblast
+fasterq-dump SRR11045090 --split-files -p 
+
+mv SRR11045090_1.fastq epi_1.fastq
+mv SRR11045090_2.fastq epi_2.fastq
+
+# Build genome index
+hisat2-build ../GCF_009873245.2_mBalMus1.pri.v3_genomic.fna bluewhale_index
+
+# Align each tissue separately to assembly
+# Skin
+hisat2 -x ../indexed_genome/bluewhale_index -p 16 --dta -1 skin_1.fastq -2 skin_2.fastq | samtools sort -@ 16 -o skin.bam 
+samtools index skin.bam
+
+# Epidermis and Blubber, Fibroblast
+hisat2 -x ../indexed_genome/bluewhale_index -p 16 --dta -1 epi_1.fastq -2 epi_2.fastq | samtools sort -@ 16 -o epi.bam 
+samtools index epi.bam
+
+
+
+
 
 # -----------------------------------------------
 # PCNA Identification for Harbour Porpoise (protein level)
@@ -99,7 +176,7 @@ blastp -query ../../PCNA/data/cow/protein.faa \
   > blastp.stdout.log 2> blastp.stderr.log
 
 # -----------------------------------------------
-# PCNA Identification for NA Right Whale (dna level)
+# PCNA Identification for Harbour Porpoise (dna level)
 # -----------------------------------------------
 
 makeblastdb -in ../../GCF_963924675.1_mPhoPho1.1_genomic.fna -dbtype nucl -out hporpoise_genome_db
@@ -111,6 +188,10 @@ tblastn -query ../../PCNA/data/cow/protein.faa \
         -outfmt 6 \
         -num_threads 16 \
         > tblastn.stdout.log 2> tblastn.stderr.log
+
+# NO RNASEQ DATA
+
+
 
 # -----------------------------------------------
 # PCNA Identification for Minke Whale (protein level)
@@ -126,7 +207,7 @@ blastp -query ../../PCNA/data/cow/protein.faa \
   > blastp.stdout.log 2> blastp.stderr.log
 
 # -----------------------------------------------
-# PCNA Identification for Minke (dna level) 
+# PCNA Identification for Minke Whale (dna level) 
 # -----------------------------------------------
 
 makeblastdb -in ../../GCF_949987535.1_mBalAcu1.1_genomic.fna -dbtype nucl -out minke_genome_db
@@ -140,7 +221,31 @@ tblastn -query ../../PCNA/data/cow/protein.faa \
         > tblastn.stdout.log 2> tblastn.stderr.log
 
 # -----------------------------------------------
-# PCNA Identification for Long-finned Pilot (protein level)
+# RNASeq data for Minke Whale
+# -----------------------------------------------
+# Muscle Derived Fibroblast Cell
+for SRR in DRR377323 DRR377324 DRR377325; do prefetch $SRR; fasterq-dump $SRR --split-files -p; done
+
+cat DRR377323_1.fastq DRR377324_1.fastq DRR377325_1.fastq > fibroblast_1.fastq
+cat DRR377323_2.fastq DRR377324_2.fastq DRR377325_2.fastq > fibroblast_2.fastq
+
+# Build genome index
+hisat2-build ../GCF_949987535.1_mBalAcu1.1_genomic.fna minke_index
+
+# Align tissue to assembly
+# Fibroblast
+hisat2 -x ../indexed_genome/minke_index -p 16 --dta -1 fibroblast_1.fastq -2 fibroblast_2.fastq | samtools sort -@ 16 -o fibroblast.bam 
+samtools index fibroblast.bam
+
+hisat2 -x ../indexed_genome/minke_index -p 4 --dta -1 fibroblast_1.fastq -2 fibroblast_2.fastq | samtools sort -@ 4 -o fibroblast.bam
+
+
+
+
+
+
+# -----------------------------------------------
+# PCNA Identification for Long-finned Pilot Whale (protein level)
 # -----------------------------------------------
 makeblastdb  -in ../../GCF_963455315.2_mGloMel1.2_protein.faa -dbtype prot -out lfpilot_prot_db
 
@@ -153,7 +258,7 @@ blastp -query ../../PCNA/data/cow/protein.faa \
   > blastp.stdout.log 2> blastp.stderr.log
 
 # -----------------------------------------------
-# PCNA Identification for Long-finned Pilot (dna level) 
+# PCNA Identification for Long-finned Pilot Whale (dna level) 
 # -----------------------------------------------
 
 makeblastdb -in ../../GCF_963455315.2_mGloMel1.2_genomic.fna -dbtype nucl -out lfpilot_genome_db
@@ -165,6 +270,21 @@ tblastn -query ../../PCNA/data/cow/protein.faa \
         -outfmt 6 \
         -num_threads 16 \
         > tblastn.stdout.log 2> tblastn.stderr.log
+
+# -----------------------------------------------
+# RNASeq data for Long-finned Pilot Whale
+# -----------------------------------------------
+# Lung
+fasterq-dump ERR11837529 --split-files -p
+
+# Cerebellum
+fasterq-dump SRR17090397 --split-files -p
+
+# Visual Cortex
+SRR17090396 
+
+
+
 
 
 # -----------------------------------------------
@@ -181,7 +301,7 @@ blastp -query ../../PCNA/data/cow/protein.faa \
   > blastp.stdout.log 2> blastp.stderr.log
 
 # -----------------------------------------------
-# PCNA Identification for Orca(dna level) 
+# PCNA Identification for Orca (dna level) 
 # -----------------------------------------------
 
 makeblastdb -in ../../GCF_937001465.1_mOrcOrc1.1_genomic.fna -dbtype nucl -out orca_genome_db
@@ -193,6 +313,10 @@ tblastn -query ../../PCNA/data/cow/protein.faa \
         -outfmt 6 \
         -num_threads 16 \
         > tblastn.stdout.log 2> tblastn.stderr.log
+
+# NO RNASEQ DATA
+
+
 
 #-----------------------------------------------
 # PCNA Identification for Sperm Whale (protein level)
@@ -221,6 +345,10 @@ tblastn -query ../../PCNA/data/cow/protein.faa \
         -num_threads 16 \
         > tblastn.stdout.log 2> tblastn.stderr.log
 
+# NO RNASEQ DATA
+
+
+
 #-----------------------------------------------
 # PCNA Identification for Grey Whale (protein level)
 # -----------------------------------------------
@@ -248,6 +376,16 @@ tblastn -query ../../PCNA/data/cow/protein.faa \
         -outfmt 6 \
         -num_threads 16 \
         > tblastn.stdout.log 2> tblastn.stderr.log
+
+# -----------------------------------------------
+# RNASeq data for Long-finned Grey Whale
+# -----------------------------------------------
+# Liver
+SRR13853443
+# Kidney
+SRR13853442
+# Cells
+SRR30172933
 
 
 # -----------------------------------------------
@@ -278,6 +416,16 @@ tblastn -query ../../PCNA/data/cow/protein.faa \
         > tblastn.stdout.log 2> tblastn.stderr.log
 
 # -----------------------------------------------
+# RNASeq data for Blainville's Beaked Whale
+# -----------------------------------------------
+# Muscle, cultured fribroblasts from skin
+SRR25888830
+
+
+
+
+
+# -----------------------------------------------
 # PCNA Identification for White-beaked Dolphin (protein level)
 # -----------------------------------------------
 makeblastdb  -in ../../GCF_949774975.1_mLagAlb1.1_protein.faa -dbtype prot -out wbdol_prot_db
@@ -303,6 +451,10 @@ tblastn -query ../../PCNA/data/cow/protein.faa \
         -outfmt 6 \
         -num_threads 16 \
         > tblastn.stdout.log 2> tblastn.stderr.log
+
+# NO RNASEQ DATA (Only pacific white-sided dolphin)
+
+
 
 # -----------------------------------------------
 # PCNA Identification for Saddleback Dolphin (protein level)
@@ -330,6 +482,16 @@ tblastn -query ../../PCNA/data/cow/protein.faa \
         -outfmt 6 \
         -num_threads 16 \
         > tblastn.stdout.log 2> tblastn.stderr.log
+
+# -----------------------------------------------
+# RNASeq data for Saddleback Dolphin
+# -----------------------------------------------
+# Skin
+SRR22401078
+# Adipose
+SRR22372874
+# Liver
+ERR1331714
 
 # -----------------------------------------------
 # PCNA Identification for Yangtze River Dolphin (protein level)
