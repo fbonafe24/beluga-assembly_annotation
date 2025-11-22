@@ -452,7 +452,7 @@ tblastn -query ../../PCNA/data/cow/protein.faa \
         -num_threads 16 \
         > tblastn.stdout.log 2> tblastn.stderr.log
 
-# NO RNASEQ DATA (Only pacific white-sided dolphin)
+# NO RNASEQ DATA (Only pacific white-sided dolphin (use for orca and this))
 
 
 
